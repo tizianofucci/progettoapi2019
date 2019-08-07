@@ -49,7 +49,7 @@ struct Entity_node{
 // Un nodo dell'albero delle relazioni
 struct Relation_node {
     struct Relation key;
-    struct Entity_node *left, *right, *p;
+    struct Relation_node *left, *right, *p;
     bool color;
 } ;
 
@@ -94,7 +94,7 @@ int end() {
 /* FUNZIONI PER LA GESTIONE DEGLI ALBERI */
 
 // Cerca un'entità nell'albero
-struct Entity_node *search_entity(char name) {
+struct Entity_node *search_entity(char *name) {
 
     if (entities_root == T_NIL)
         // albero vuoto
@@ -146,8 +146,45 @@ struct Relation_node *search_relation(struct Entity *rel_dest, char *rel_name, c
     return  T_NIL;
 }
 
+// Funzione di supporto per delete
+struct Entity_node *entity_successor(struct Entity_node *x) {
 
+    struct Entity_node* curr;
 
+    if (x->right != T_NIL) {
+        // allora il successore è il minimo del sottoalbero destro
+        curr = x->right;
+        while (x->left != T_NIL) x = x->left;
+        return x;
+    }
+    //se non c'è l'albero destro allora risalgo fino a trovare un figlio sinistro
+    curr = x->p;
+    while (curr != T_NIL && x == curr->right ) {
+        x = curr;
+        curr = x->p;
+    }
+    return curr;
+}
+
+// Funzine di supporto per delete
+struct Relation_node *relation_successor(struct Relation_node *x) {
+
+    struct Relation_node* curr;
+
+    if (x->right != T_NIL) {
+        // allora il successore è il minimo del sottoalbero destro
+        curr = x->right;
+        while (x->left != T_NIL) x = x->left;
+        return x;
+    }
+    //se non c'è l'albero destro allora risalgo fino a trovare un figlio sinistro
+    curr = x->p;
+    while (curr != T_NIL && x == curr->right ) {
+        x = curr;
+        curr = x->p;
+    }
+    return curr;
+}
 
 
 
