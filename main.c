@@ -23,12 +23,12 @@
 struct Relation_type{
     char *relation_name;
     struct Relation_type* next_relation;
-    struct Relation *relations_root;
+    struct Relation_node *relations_root;
     unsigned int number;
 };
 
 // Un'entità monitorata
-struct Entity{
+struct Entity {
     char *name;
     struct Relation_type *relations;
 };
@@ -59,8 +59,6 @@ struct Relation_node {
 // Un albero rosso-nero contenente tutte le entità
 struct Entity_node *entities_root;
 
-// Un albero rosso-nero contenente tutte le istanze di relazione entranti in un'entità
-struct Relation_node *relations_root;
 
 
 
@@ -96,7 +94,7 @@ int end() {
 /* FUNZIONI PER LA GESTIONE DEGLI ALBERI */
 
 // Cerca un'entità nell'albero
-struct Entity_node *search_entity(char *key) {
+struct Entity_node *search_entity(char name) {
 
     if (entities_root == T_NIL)
         // albero vuoto
@@ -105,9 +103,9 @@ struct Entity_node *search_entity(char *key) {
     struct Entity_node *current = entities_root;
 
     do {
-        if (strcmp(key, current->key.name) == 0)
+        if (strcmp(name, current->key.name) == 0)
             return current;
-        if (strcmp(key, current->key.name) > 0)
+        if (strcmp(name, current->key.name) > 0)
             current = current->right;
         else current = current->left;
 
@@ -118,7 +116,35 @@ struct Entity_node *search_entity(char *key) {
 }
 
 // Cerca una relazione nell'albero
+struct Relation_node *search_relation(struct Entity *rel_dest, char *rel_name, char *rel_orig) {
 
+    if (rel_dest == T_NIL || rel_name == T_NIL || rel_orig == T_NIL)
+        return T_NIL;
+
+    struct Relation_type *curr_rel_type = rel_dest->relations;
+    // cerca se esiste quel tipo di relazione
+    while(curr_rel_type != T_NIL && strcmp(curr_rel_type->relation_name, rel_name) != 0)
+        curr_rel_type = curr_rel_type->next_relation;
+    // se non trovato, ritorna NIL
+    if (curr_rel_type == T_NIL)
+        return T_NIL;
+
+    // se quel tipo di relazione esiste, cerca la specifica istanza
+    struct Relation_node *curr_rel = curr_rel_type->next_relation;
+
+    // ricerca nell'albero
+    do {
+        if (strcmp(rel_orig, curr_rel->key.name) == 0)
+            return curr_rel;
+        if (strcmp(rel_orig, curr_rel->key.name) > 0)
+            curr_rel = curr_rel->right;
+        else curr_rel = curr_rel->left;
+
+    } while (curr_rel != T_NIL);
+
+    // non trovata
+    return  T_NIL;
+}
 
 
 
