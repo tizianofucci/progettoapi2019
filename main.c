@@ -1,46 +1,72 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdbool.h>
+
 
 /* COSTANTI GLOBALI */
 
+// Capacità iniziale del vettore dinamico
 #define INITIAL_CAPACITY 10
+
+
+
+// Costanti per gli alberi rosso-neri
+#define T_NIL NULL
+#define RED true;
+#define BLACK false;
+
 
 /* STRUTTURE */
 
-struct Relation_type {
+// Un tipo di relazione collegato a un'entità
+struct Relation_type{
     char *relation_name;
     struct Relation_type* next_relation;
-    struct Relation *relations;
+    struct Relation *relations_root;
+    unsigned int number;
 };
 
+// Un'entità monitorata
+struct Entity{
+    char *name;
+    struct Relation_type *relations;
+};
+
+// Un'istanza di relazione
 struct Relation {
     char *name;
     struct Relation *next;
 };
 
-typedef struct {
-    char *name;
-    struct Relation_type *relations;
-} Entity;
+// Un nodo dell'albero delle entità
+struct Entity_node{
+    struct Entity key;
+    struct Entity_node *left, *right, *p;
+    bool color;
+};
+
+// Un nodo dell'albero delle relazioni
+struct Relation_node {
+    struct Relation key;
+    struct Entity_node *left, *right, *p;
+    bool color;
+} ;
+
 
 /* VARIABILI GLOBALI */
 
-// Il vettore dinamico ordinato contenente tutte le entità
-Entity *entities;
+// Un albero rosso-nero contenente tutte le entità
+struct Entity_node *entities_root;
 
-// La dimensione corrente del vettore di entità
-int entities_size = INITIAL_CAPACITY;
+// Un albero rosso-nero contenente tutte le istanze di relazione entranti in un'entità
+struct Relation_node *relations_root;
 
-// Il numero corrente di entità monitorate
-int entities_number = 0;
+
+
 
 
 /* FUNZIONI */
-
-Entity search_entity(char* name) {
-    //TODO: Implement this function
-}
 
 int addent(char *name) {
     //TODO: Implement this function
@@ -66,18 +92,45 @@ int end() {
     //TODO: Implement this function
 }
 
+
+/* FUNZIONI PER LA GESTIONE DEGLI ALBERI */
+
+// Cerca un'entità nell'albero
+struct Entity_node *search_entity(char *key) {
+
+    if (entities_root == T_NIL)
+        // albero vuoto
+        return T_NIL;
+
+    struct Entity_node *current = entities_root;
+
+    do {
+        if (strcmp(key, current->key.name) == 0)
+            return current;
+        if (strcmp(key, current->key.name) > 0)
+            current = current->right;
+        else current = current->left;
+
+    } while (current != T_NIL);
+
+    // non trovata
+    return  T_NIL;
+}
+
+// Cerca una relazione nell'albero
+
+
+
+
+
+
+
 int main() {
 
-    entities = malloc(INITIAL_CAPACITY * sizeof(Entity));
-    //aggiunta prima entità
-    Entity first;
-    first.name = malloc(30);
-    strcpy(first.name, "Ciao");
-    first.relations = NULL;
-    entities[0] = first;
+    // inizializza l'albero vuoto
+    entities_root = T_NIL;
 
-    free(first.name);
-    free(entities);
+    printf("%d", sizeof(struct Relation_type));
 
     return 0;
 }
