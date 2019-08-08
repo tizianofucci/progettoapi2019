@@ -20,7 +20,7 @@
 /* STRUTTURE */
 
 // Un tipo di relazione collegato a un'entità
-struct Relation_type{
+struct Relation_type {
     char *relation_name;
     struct Relation_type* next_relation;
     struct Relation_node *relations_root;
@@ -40,7 +40,7 @@ struct Relation {
 };
 
 // Un nodo dell'albero delle entità
-struct Entity_node{
+struct Entity_node {
     struct Entity key;
     struct Entity_node *left, *right, *p;
     bool color;
@@ -184,6 +184,94 @@ struct Relation_node *relation_successor(struct Relation_node *x) {
         curr = x->p;
     }
     return curr;
+}
+
+// Rotazione a sinistra nell'albero delle entità
+void entity_left_rotate(struct Entity_node *x) {
+
+    struct Entity_node *y;
+
+    y = x->right;
+    //il sottoalbero sinistro di y diventa quello destro di x
+    x->right = y->left;
+    if (y->left == T_NIL)
+        y->left->p = x;
+    //attacca il padre di x a y
+    y->p = x->p;
+    if (x->p == T_NIL)
+        entities_root = y;
+    else if (x == x->p->left)
+        x->p->left = y;
+    else x->p->right = y;
+    //mette x a sinistra di y
+    y->left = x;
+    x->p = y;
+}
+
+// Rotazione a destra nell'albero delle entità
+void entity_right_rotate(struct Entity_node *x) {
+
+    struct Entity_node *y;
+
+    y = x->left;
+    //il sottoalbero destro di y diventa quello sinistro di x
+    x->left = y->right;
+    if (y->right == T_NIL)
+        y->right->p = x;
+    //attacca il padre di x a y
+    y->p = x->p;
+    if (x->p == T_NIL)
+        entities_root = y;
+    else if (x == x->p->left)
+        x->p->left = y;
+    else x->p->right = y;
+    //mette x a destra di y
+    y->right = x;
+    x->p = y;
+}
+
+// Rotazione a sinistra nell'albero delle relazioni
+void relation_left_rotate(struct Relation_node *x, struct Relation_node **root) {
+
+    struct Relation_node *y;
+
+    y = x->right;
+    //il sottoalbero sinistro di y diventa quello destro di x
+    x->right = y->left;
+    if (y->left == T_NIL)
+        y->left->p = x;
+    //attacca il padre di x a y
+    y->p = x->p;
+    if (x->p == T_NIL)
+        *root = y;
+    else if (x == x->p->left)
+        x->p->left = y;
+    else x->p->right = y;
+    //mette x a sinistra di y
+    y->left = x;
+    x->p = y;
+}
+
+//rotazione a destra nell'albero delle relazioni
+void relation_right_rotate(struct Relation_node *x, struct Relation_node **root) {
+
+    struct Relation_node *y;
+
+    y = x->left;
+    //il sottoalbero destro di y diventa quello sinistro di x
+    x->left = y->right;
+    if (y->right == T_NIL)
+        y->right->p = x;
+    //attacca il padre di x a y
+    y->p = x->p;
+    if (x->p == T_NIL)
+        *root = y;
+    else if (x == x->p->left)
+        x->p->left = y;
+    else x->p->right = y;
+    //mette x a destra di y
+    y->right = x;
+    x->p = y;
 }
 
 
