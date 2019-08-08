@@ -10,19 +10,18 @@
 #define INITIAL_CAPACITY 10
 
 
-
 // Costanti per gli alberi rosso-neri
 #define T_NIL NULL
-#define RED true;
-#define BLACK false;
-
+#define RED true
+#define BLACK false
+// TODO: Substitute RED/BlACK WITH 1/0
 
 /* STRUTTURE */
 
 // Un tipo di relazione collegato a un'entità
 struct Relation_type {
     char *relation_name;
-    struct Relation_type* next_relation;
+    struct Relation_type *next_relation;
     struct Relation_node *relations_root;
     unsigned int number;
 };
@@ -130,7 +129,7 @@ struct Relation_node *search_relation(struct Entity *rel_dest, char *rel_name, c
         return T_NIL;
 
     // se quel tipo di relazione esiste, cerca la specifica istanza
-    struct Relation_node *curr_rel = curr_rel_type->next_relation;
+    struct Relation_node *curr_rel = curr_rel_type->relations_root;
 
     // ricerca nell'albero
     do {
@@ -252,7 +251,7 @@ void relation_left_rotate(struct Relation_node *x, struct Relation_node **root) 
     x->p = y;
 }
 
-//rotazione a destra nell'albero delle relazioni
+// Rotazione a destra nell'albero delle relazioni
 void relation_right_rotate(struct Relation_node *x, struct Relation_node **root) {
 
     struct Relation_node *y;
@@ -272,6 +271,99 @@ void relation_right_rotate(struct Relation_node *x, struct Relation_node **root)
     //mette x a destra di y
     y->right = x;
     x->p = y;
+}
+
+// Funzione di supporto all'inserimento
+void entity_insert_fixup(struct Entity_node *entity) {
+
+    struct Entity_node *x, *y;
+
+    if (entity == entities_root)
+        entities_root->color = BLACK;
+    else {
+        x = entity->p;
+        if (x->color == RED) {
+            if (x == x->p->left) {
+                //x è figlio sinistro
+                y = x->p->right;
+                if (y->color == RED) {
+                    x->color = BLACK;
+                    y->color = BLACK;
+                    x->p->color =RED;
+                    entity_insert_fixup(x->p);
+                    //TODO: Eliminate this recursive statement
+                }
+                else {
+                    if (entity == x->right) {
+                        entity = x;
+                        entity_left_rotate(entity);
+                        x = entity->p;
+                    }
+                    x->color = BLACK;
+                    x->p->color = RED;
+                    entity_right_rotate(x->p);
+                }
+            }
+            else {
+                //x è figlio destro
+                y = x->p->left;
+                if (y->color == RED) {
+                    x->color = BLACK;
+                    y->color = BLACK;
+                    x->p->color =RED;
+                    entity_insert_fixup(x->p);
+                    //TODO: Eliminate this recursive statement
+                }
+                else {
+                    if (entity == x->left) {
+                        entity = x;
+                        entity_right_rotate(entity);
+                        x = entity->p;
+                    }
+                    x->color = BLACK;
+                    x->p->color = RED;
+                    entity_left_rotate(x->p);
+                }
+            }
+
+        }
+    }
+    //forse non necessario
+    entities_root->color = BLACK;
+}
+
+// Inserimento di un'entità nell'albero, con verifica per evitare duplicati
+void entity_insert(struct Entity entity) {
+
+    //costruisce il nodo con la chiave
+    struct Entity_node *new = malloc(sizeof(struct Entity_node));
+    new->key = entity;
+    new->right = T_NIL;
+    new->left = T_NIL;
+    new->p = T_NIL;
+
+    struct Entity_node *x, *y;
+    y = T_NIL;
+    x = entities_root;
+    //ricerca
+    while (x != T_NIL) {
+        y = x;
+        if (strcmp(new->key.name, x->key.name) < 0)
+            x = x->left;
+        else if (strcmp(new->key.name, x->key.name) == 0)
+            //esiste già
+            return;
+        else x = x->right;
+    }
+    //l'entità non era già presente
+    new->p = y;
+    if (y == T_NIL)
+        entities_root = new;
+    else if (strcmp(new->key.name, y->key.name) < 0)
+        y->left = new;
+    else y->right = new;
+    new->color = RED;
+    entity_insert_fixup(new);
 }
 
 
