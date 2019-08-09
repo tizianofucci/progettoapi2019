@@ -14,7 +14,6 @@
 #define T_NIL NULL
 #define RED true
 #define BLACK false
-// TODO: Substitute RED/BlACK WITH 1/0
 
 /* STRUTTURE */
 
@@ -364,6 +363,99 @@ void entity_insert(struct Entity entity) {
     else y->right = new;
     new->color = RED;
     entity_insert_fixup(new);
+}
+
+// Funzione di supporto all'inserimento
+void relation_insert_fixup(struct Relation_node *tree_root, struct Relation_node *relation) {
+
+    struct Relation_node *x, *y;
+
+    if (relation == tree_root)
+        tree_root->color = BLACK;
+    else {
+        x = relation->p;
+        if (x->color == RED) {
+            if (x == x->p->left) {
+                //x è figlio sinistro
+                y = x->p->right;
+                if (y->color == RED) {
+                    x->color = BLACK;
+                    y->color = BLACK;
+                    x->p->color =RED;
+                    relation_insert_fixup(tree_root, x->p);
+                    //TODO: Eliminate this recursive statement
+                }
+                else {
+                    if (relation == x->right) {
+                        relation = x;
+                        relation_left_rotate(tree_root, &relation);
+                        x = relation->p;
+                    }
+                    x->color = BLACK;
+                    x->p->color = RED;
+                    relation_right_rotate(tree_root, &x->p);
+                }
+            }
+            else {
+                //x è figlio destro
+                y = x->p->left;
+                if (y->color == RED) {
+                    x->color = BLACK;
+                    y->color = BLACK;
+                    x->p->color =RED;
+                    relation_insert_fixup(tree_root, x->p);
+                    //TODO: Eliminate this recursive statement
+                }
+                else {
+                    if (relation == x->left) {
+                        relation = x;
+                        relation_right_rotate(tree_root, &relation);
+                        x = relation->p;
+                    }
+                    x->color = BLACK;
+                    x->p->color = RED;
+                    relation_left_rotate(tree_root, &x->p);
+                }
+            }
+
+        }
+    }
+    //forse non necessario
+    tree_root->color = BLACK;
+}
+
+// Inserimento di una relazione nell'albero, con verifica per evitare duplicati
+void relation_insert(struct Relation_node **tree_root, struct Relation relation) {
+
+    //costruisce il nodo con la chiave
+    struct Relation_node *new = malloc(sizeof(struct Relation_node));
+    new->key = relation;
+    new->right = T_NIL;
+    new->left = T_NIL;
+    new->p = T_NIL;
+
+    struct Relation_node *x, *y;
+    y = T_NIL;
+    x = *tree_root;
+    //ricerca
+    while (x != T_NIL) {
+        y = x;
+        if (strcmp(new->key.name, x->key.name) < 0)
+            x = x->left;
+        else if (strcmp(new->key.name, x->key.name) == 0)
+            //esiste già
+            return;
+        else x = x->right;
+    }
+    //l'entità non era già presente
+    new->p = y;
+    if (y == T_NIL)
+        *tree_root = new;
+    else if (strcmp(new->key.name, y->key.name) < 0)
+        y->left = new;
+    else y->right = new;
+    new->color = RED;
+    relation_insert_fixup(*tree_root, new);
 }
 
 
