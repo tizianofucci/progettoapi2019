@@ -229,7 +229,7 @@ void entity_right_rotate(struct Entity_node *x) {
 }
 
 // Rotazione a sinistra nell'albero delle relazioni
-void relation_left_rotate(struct Relation_node *x, struct Relation_node **root) {
+void relation_left_rotate(struct Relation_node **tree_root, struct Relation_node *x) {
 
     struct Relation_node *y;
 
@@ -241,7 +241,7 @@ void relation_left_rotate(struct Relation_node *x, struct Relation_node **root) 
     //attacca il padre di x a y
     y->p = x->p;
     if (x->p == T_NIL)
-        *root = y;
+        *tree_root = y;
     else if (x == x->p->left)
         x->p->left = y;
     else x->p->right = y;
@@ -251,7 +251,7 @@ void relation_left_rotate(struct Relation_node *x, struct Relation_node **root) 
 }
 
 // Rotazione a destra nell'albero delle relazioni
-void relation_right_rotate(struct Relation_node *x, struct Relation_node **root) {
+void relation_right_rotate(struct Relation_node **tree_root, struct Relation_node *x) {
 
     struct Relation_node *y;
 
@@ -263,7 +263,7 @@ void relation_right_rotate(struct Relation_node *x, struct Relation_node **root)
     //attacca il padre di x a y
     y->p = x->p;
     if (x->p == T_NIL)
-        *root = y;
+        *tree_root = y;
     else if (x == x->p->left)
         x->p->left = y;
     else x->p->right = y;
@@ -388,12 +388,12 @@ void relation_insert_fixup(struct Relation_node *tree_root, struct Relation_node
                 else {
                     if (relation == x->right) {
                         relation = x;
-                        relation_left_rotate(tree_root, &relation);
+                        relation_left_rotate(&tree_root, relation);
                         x = relation->p;
                     }
                     x->color = BLACK;
                     x->p->color = RED;
-                    relation_right_rotate(tree_root, &x->p);
+                    relation_right_rotate(&tree_root, x->p);
                 }
             }
             else {
@@ -409,19 +409,18 @@ void relation_insert_fixup(struct Relation_node *tree_root, struct Relation_node
                 else {
                     if (relation == x->left) {
                         relation = x;
-                        relation_right_rotate(tree_root, &relation);
+                        relation_right_rotate(&tree_root, relation);
                         x = relation->p;
                     }
                     x->color = BLACK;
                     x->p->color = RED;
-                    relation_left_rotate(tree_root, &x->p);
+                    relation_left_rotate(&tree_root, x->p);
                 }
             }
 
         }
     }
-    //forse non necessario
-    tree_root->color = BLACK;
+    //forse tree_root->color = BLACK?
 }
 
 // Inserimento di una relazione nell'albero, con verifica per evitare duplicati
@@ -457,6 +456,176 @@ void relation_insert(struct Relation_node **tree_root, struct Relation relation)
     new->color = RED;
     relation_insert_fixup(*tree_root, new);
 }
+
+// Funzione di supporto alla cancellazione
+void entity_delete_fixup (struct Entity_node *x) {
+
+    struct Entity_node *w;
+
+    if (x->color == RED || x->p == T_NIL)
+        x->color = BLACK;
+    else if (x == x->p->left) {
+        w = x->p->right;
+        if (w->color == RED) {
+            w->color = BLACK;
+            x->p->color = RED;
+            entity_left_rotate(x->p);
+            w = x->p->right;
+        }
+        if (w->left->color == BLACK && w->right->color == BLACK) {
+            w->color = RED;
+            entity_delete_fixup(x->p);
+            //TODO: Eliminate this recursive statement
+        }
+        else if (w->right->color == BLACK) {
+            w->left->color = BLACK;
+            w->color = RED;
+            entity_right_rotate(w);
+            w = x->p->right;
+        }
+        w->color = x->p->color;
+        x->p->color = BLACK;
+        w->right->color = BLACK;
+        entity_left_rotate(x->p);
+    }
+    else {
+        w = x->p->left;
+        if (w->color == RED) {
+            w->color = BLACK;
+            x->p->color = RED;
+            entity_right_rotate(x->p);
+            w = x->p->left;
+        }
+        if (w->right->color == BLACK && w->left->color == BLACK) {
+            w->color = RED;
+            entity_delete_fixup(x->p);
+            //TODO: Eliminate this recursive statement
+        }
+        else if (w->left->color == BLACK) {
+            w->right->color = BLACK;
+            w->color = RED;
+            entity_left_rotate(w);
+            w = x->p->left;
+        }
+        w->color = x->p->color;
+        x->p->color = BLACK;
+        w->left->color = BLACK;
+        entity_right_rotate(x->p);
+    }
+    // forse x->color = BLACK?
+}
+
+// Cancellazione di un'entità dall'albero
+void entity_delete (struct Entity_node *z) {
+
+    struct Entity_node *x, *y;
+
+    if (z->left == T_NIL || z->right == T_NIL)
+        y = z;
+    else y = entity_successor(z);
+    if (y->left != T_NIL)
+        x = y->left;
+    else x = y->right;
+    x->p = y->p;
+    if (y->p == T_NIL)
+        entities_root = x;
+    else if (y == y->p->left)
+        y->p->left = x;
+    else y->p->right = x;
+    if (y != z)
+        z->key = y->key;
+    if (y->color == BLACK)
+        entity_delete_fixup(x);
+
+    //TODO: fare free su tutte le cose allocate nell'entità
+    free(z);
+}
+
+// Funzione di supporto alla cancellazione
+void relation_delete_fixup (struct Relation_node **tree_root, struct Relation_node *x) {
+
+    struct Relation_node *w;
+
+    if (x->color == RED || x->p == T_NIL)
+        x->color = BLACK;
+    else if (x == x->p->left) {
+        w = x->p->right;
+        if (w->color == RED) {
+            w->color = BLACK;
+            x->p->color = RED;
+            relation_left_rotate(tree_root, x->p);
+            w = x->p->right;
+        }
+        if (w->left->color == BLACK && w->right->color == BLACK) {
+            w->color = RED;
+            relation_delete_fixup(tree_root, x->p);
+            //TODO: Eliminate this recursive statement
+        }
+        else if (w->right->color == BLACK) {
+            w->left->color = BLACK;
+            w->color = RED;
+            relation_right_rotate(tree_root, w);
+            w = x->p->right;
+        }
+        w->color = x->p->color;
+        x->p->color = BLACK;
+        w->right->color = BLACK;
+        relation_left_rotate(tree_root, x->p);
+    }
+    else {
+        w = x->p->left;
+        if (w->color == RED) {
+            w->color = BLACK;
+            x->p->color = RED;
+            relation_right_rotate(tree_root, x->p);
+            w = x->p->left;
+        }
+        if (w->right->color == BLACK && w->left->color == BLACK) {
+            w->color = RED;
+            relation_delete_fixup(tree_root, x->p);
+            //TODO: Eliminate this recursive statement
+        }
+        else if (w->left->color == BLACK) {
+            w->right->color = BLACK;
+            w->color = RED;
+            relation_left_rotate(tree_root, w);
+            w = x->p->left;
+        }
+        w->color = x->p->color;
+        x->p->color = BLACK;
+        w->left->color = BLACK;
+        relation_right_rotate(tree_root, x->p);
+    }
+    // forse x->color = BLACK?
+}
+
+// Cancellazione di un'entità dall'albero
+void relation_delete (struct Relation_node **tree_root, struct Relation_node *z) {
+
+    struct Relation_node *x, *y;
+
+    if (z->left == T_NIL || z->right == T_NIL)
+        y = z;
+    else y = relation_successor(z);
+    if (y->left != T_NIL)
+        x = y->left;
+    else x = y->right;
+    x->p = y->p;
+    if (y->p == T_NIL)
+        *tree_root = x;
+    else if (y == y->p->left)
+        y->p->left = x;
+    else y->p->right = x;
+    if (y != z)
+        z->key = y->key;
+    if (y->color == BLACK)
+        relation_delete_fixup(tree_root, x);
+
+    //TODO: fare free su tutte le cose allocate nell'entità
+    free(z);
+}
+
+
 
 
 
