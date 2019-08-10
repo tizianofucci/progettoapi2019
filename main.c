@@ -33,8 +33,7 @@ struct Entity {
 
 // Un'istanza di relazione
 struct Relation {
-    char *name;
-    struct Relation *next;
+    char *sender;
 };
 
 // Un nodo dell'albero delle entità
@@ -132,9 +131,9 @@ struct Relation_node *search_relation(struct Entity *rel_dest, char *rel_name, c
 
     // ricerca nell'albero
     do {
-        if (strcmp(rel_orig, curr_rel->key.name) == 0)
+        if (strcmp(rel_orig, curr_rel->key.sender) == 0)
             return curr_rel;
-        if (strcmp(rel_orig, curr_rel->key.name) > 0)
+        if (strcmp(rel_orig, curr_rel->key.sender) > 0)
             curr_rel = curr_rel->right;
         else curr_rel = curr_rel->left;
 
@@ -439,9 +438,9 @@ void relation_insert(struct Relation_node **tree_root, struct Relation relation)
     //ricerca
     while (x != T_NIL) {
         y = x;
-        if (strcmp(new->key.name, x->key.name) < 0)
+        if (strcmp(new->key.sender, x->key.sender) < 0)
             x = x->left;
-        else if (strcmp(new->key.name, x->key.name) == 0)
+        else if (strcmp(new->key.sender, x->key.sender) == 0)
             //esiste già
             return;
         else x = x->right;
@@ -450,7 +449,7 @@ void relation_insert(struct Relation_node **tree_root, struct Relation relation)
     new->p = y;
     if (y == T_NIL)
         *tree_root = new;
-    else if (strcmp(new->key.name, y->key.name) < 0)
+    else if (strcmp(new->key.sender, y->key.sender) < 0)
         y->left = new;
     else y->right = new;
     new->color = RED;
@@ -458,8 +457,13 @@ void relation_insert(struct Relation_node **tree_root, struct Relation relation)
 }
 
 // Distrugge un intero albero di relazioni
-void relation_tree_destroy(struct Relation_node **root) {
-    //TODO: Implement this function
+void relation_tree_destroy(struct Relation_node *root) {
+    if (root != T_NIL) {
+        relation_tree_destroy(root->left);
+        relation_tree_destroy(root->right);
+        //TODO: Check this recursive statements
+        free(root->key.sender);
+    }
 }
 
 // Deallocazione di un'intera entità
@@ -472,7 +476,9 @@ void entity_destroy(struct Entity_node *x) {
         next = curr->next_relation;
         free(curr->relation_name);
         //dealloca l'intero albero
-        relation_tree_destroy(&curr->relations_root);
+        relation_tree_destroy(curr->relations_root);
+        //dealloca la radice
+        free(curr->relations_root);
         curr = next;
     }
     //dealloca il nodo
