@@ -457,6 +457,28 @@ void relation_insert(struct Relation_node **tree_root, struct Relation relation)
     relation_insert_fixup(*tree_root, new);
 }
 
+// Distrugge un intero albero di relazioni
+void relation_tree_destroy(struct Relation_node **root) {
+    //TODO: Implement this function
+}
+
+// Deallocazione di un'intera entità
+void entity_destroy(struct Entity_node *x) {
+    free(x->key.name);
+    struct Relation_type *curr, *next;
+    curr = x->key.relations;
+    //scorre tutti i tipi di relazione
+    while(curr != T_NIL) {
+        next = curr->next_relation;
+        free(curr->relation_name);
+        //dealloca l'intero albero
+        relation_tree_destroy(&curr->relations_root);
+        curr = next;
+    }
+    //dealloca il nodo
+    free(x);
+}
+
 // Funzione di supporto alla cancellazione
 void entity_delete_fixup (struct Entity_node *x) {
 
@@ -537,8 +559,7 @@ void entity_delete (struct Entity_node *z) {
     if (y->color == BLACK)
         entity_delete_fixup(x);
 
-    //TODO: fare free su tutte le cose allocate nell'entità
-    free(z);
+    entity_destroy(z);
 }
 
 // Funzione di supporto alla cancellazione
@@ -634,7 +655,7 @@ int main() {
     // inizializza l'albero vuoto
     entities_root = T_NIL;
 
-    printf("%d", sizeof(struct Relation_type));
+
 
     return 0;
 }
