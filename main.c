@@ -8,6 +8,7 @@
 
 // Capacità iniziale del vettore dinamico
 #define INITIAL_CAPACITY 10
+#define RELATION_NAME_LENGTH
 
 
 // Costanti per gli alberi rosso-neri
@@ -51,32 +52,14 @@ struct Relation_node {
 // Un albero rosso-nero contenente tutte le entità
 struct Entity_node *entities_root;
 
+// Il nome dell'entità che si sta eliminando
+char *eliminating_entity_name;
 
-/* FUNZIONI */
+// Se un'istanza di relazione era presente nell'albero dove si è cercato
+bool FOUND;
 
-int addent(char *name) {
-    //TODO: Implement this function
-}
-
-int delent(char *name) {
-    //TODO: Implement this function
-}
-
-int addrel(char *orig, char *dest, char *rel_name) {
-    //TODO: Implement this function
-}
-
-int delrel(char *orig, char *dest, char *rel_name) {
-    //TODO: Implement this function
-}
-
-void report() {
-    //TODO: Implement this function
-}
-
-int end() {
-    //TODO: Implement this function
-}
+//
+struct Relation_node **CURRENT_ROOT;
 
 
 /* FUNZIONI PER LA GESTIONE DEGLI ALBERI */
@@ -103,7 +86,15 @@ struct Entity_node *search_entity(char *name) {
     return  T_NIL;
 }
 
-// Cerca una relazione nell'albero
+struct Relation_type *search_relation_type(struct Entity *entity, char name[RELATION_NAME_LENGTH]) {
+    struct Relation_type *curr = entity->relations;
+    while (curr != NULL && strcmp(curr->relation_name, name) != 0) {
+        curr = curr->next_relation;
+    }
+    return curr;
+}
+
+// Cerca un'istanza di relazione in un'entità (per delrel)
 struct Relation_node *search_relation(struct Entity *rel_dest, char *rel_name, char *rel_orig) {
 
     if (rel_dest == T_NIL || rel_name == T_NIL || rel_orig == T_NIL)
@@ -276,7 +267,6 @@ void entity_insert_fixup(struct Entity_node *entity) {
                     y->color = BLACK;
                     x->p->color =RED;
                     entity_insert_fixup(x->p);
-                    //TODO: Eliminate this recursive statement
                 }
                 else {
                     if (entity == x->right) {
@@ -297,7 +287,6 @@ void entity_insert_fixup(struct Entity_node *entity) {
                     y->color = BLACK;
                     x->p->color =RED;
                     entity_insert_fixup(x->p);
-                    //TODO: Eliminate this recursive statement
                 }
                 else {
                     if (entity == x->left) {
@@ -369,7 +358,6 @@ void relation_insert_fixup(struct Relation_node *tree_root, struct Relation_node
                     y->color = BLACK;
                     x->p->color =RED;
                     relation_insert_fixup(tree_root, x->p);
-                    //TODO: Eliminate this recursive statement
                 }
                 else {
                     if (relation == x->right) {
@@ -390,7 +378,6 @@ void relation_insert_fixup(struct Relation_node *tree_root, struct Relation_node
                     y->color = BLACK;
                     x->p->color =RED;
                     relation_insert_fixup(tree_root, x->p);
-                    //TODO: Eliminate this recursive statement
                 }
                 else {
                     if (relation == x->left) {
@@ -409,8 +396,11 @@ void relation_insert_fixup(struct Relation_node *tree_root, struct Relation_node
     //forse tree_root->color = BLACK?
 }
 
-// Inserimento di una relazione nell'albero, con verifica per evitare duplicati
-void relation_insert(struct Relation_node **tree_root, char *name) {
+// Inserimento di una istanza relazione nell'albero, con verifica per evitare duplicati
+void relation_instance_insert(struct Relation_node **tree_root, char *name) {
+
+    //flag per verifica duplicati
+    FOUND = 0;
 
     //costruisce il nodo con la chiave
     struct Relation_node *new = malloc(sizeof(struct Relation_node));
@@ -427,9 +417,11 @@ void relation_insert(struct Relation_node **tree_root, char *name) {
         y = x;
         if (strcmp(new->sender, x->sender) < 0)
             x = x->left;
-        else if (strcmp(new->sender, x->sender) == 0)
-            //esiste già
+        else if (strcmp(new->sender, x->sender) == 0) {
+            //esiste già, non aumentare contatore
+            FOUND = 1;
             return;
+            }
         else x = x->right;
     }
     //l'entità non era già presente
@@ -443,12 +435,11 @@ void relation_insert(struct Relation_node **tree_root, char *name) {
     relation_insert_fixup(*tree_root, new);
 }
 
-// Distrugge un intero albero di relazioni
+// Distrugge un intero albero di relazioni, ma non la radice
 void relation_tree_destroy(struct Relation_node *root) {
     if (root != T_NIL) {
         relation_tree_destroy(root->left);
         relation_tree_destroy(root->right);
-        //TODO: Check this recursive statements
         free(root->sender);
     }
 }
@@ -472,6 +463,22 @@ void entity_destroy(struct Entity_node *x) {
     free(x);
 }
 
+// Deallocazione di un'istanza di relazione
+void relation_instance_destroy(struct Relation_node *x) {
+    free(x->sender);
+    free(x);
+}
+
+// Elimina un tipo di relazione, nei parametri va fornito anche il precedente così da avere tempo di esecuzione O(1)
+void relation_destroy(struct Relation_type *relation, struct Relation_type *prev) {
+    //collega la relazione precedente alla successiva di quella da eliminare
+    prev->next_relation = relation->next_relation;
+    relation_tree_destroy(relation->relations_root);
+    free(relation->relations_root);
+    free(relation->relation_name);
+    free(relation);
+}
+
 // Funzione di supporto alla cancellazione
 void entity_delete_fixup (struct Entity_node *x) {
 
@@ -490,7 +497,6 @@ void entity_delete_fixup (struct Entity_node *x) {
         if (w->left->color == BLACK && w->right->color == BLACK) {
             w->color = RED;
             entity_delete_fixup(x->p);
-            //TODO: Eliminate this recursive statement
         }
         else if (w->right->color == BLACK) {
             w->left->color = BLACK;
@@ -514,7 +520,6 @@ void entity_delete_fixup (struct Entity_node *x) {
         if (w->right->color == BLACK && w->left->color == BLACK) {
             w->color = RED;
             entity_delete_fixup(x->p);
-            //TODO: Eliminate this recursive statement
         }
         else if (w->left->color == BLACK) {
             w->right->color = BLACK;
@@ -531,9 +536,12 @@ void entity_delete_fixup (struct Entity_node *x) {
 }
 
 // Cancellazione di un'entità dall'albero
-void entity_delete (struct Entity_node *z) {
+void entity_node_delete (struct Entity_node *z) {
 
     struct Entity_node *x, *y;
+
+    if (z == NULL)
+        return;
 
     if (z->left == T_NIL || z->right == T_NIL)
         y = z;
@@ -573,7 +581,6 @@ void relation_delete_fixup (struct Relation_node **tree_root, struct Relation_no
         if (w->left->color == BLACK && w->right->color == BLACK) {
             w->color = RED;
             relation_delete_fixup(tree_root, x->p);
-            //TODO: Eliminate this recursive statement
         }
         else if (w->right->color == BLACK) {
             w->left->color = BLACK;
@@ -597,7 +604,6 @@ void relation_delete_fixup (struct Relation_node **tree_root, struct Relation_no
         if (w->right->color == BLACK && w->left->color == BLACK) {
             w->color = RED;
             relation_delete_fixup(tree_root, x->p);
-            //TODO: Eliminate this recursive statement
         }
         else if (w->left->color == BLACK) {
             w->right->color = BLACK;
@@ -613,7 +619,7 @@ void relation_delete_fixup (struct Relation_node **tree_root, struct Relation_no
     // forse x->color = BLACK?
 }
 
-// Cancellazione di un'entità dall'albero
+// Cancellazione di un'entità dall'albero e deallocazione del nodo
 void relation_delete (struct Relation_node **tree_root, struct Relation_node *z) {
 
     struct Relation_node *x, *y;
@@ -635,10 +641,117 @@ void relation_delete (struct Relation_node **tree_root, struct Relation_node *z)
     if (y->color == BLACK)
         relation_delete_fixup(tree_root, x);
 
-    //TODO: fare free su tutte le cose allocate nell'entità
-    free(z);
+    relation_instance_destroy(z);
 }
 
+void counter_decrease (struct Relation_type *relation) {
+    //TODO: Implement this function
+}
+
+void counter_increase (struct Relation_type *relation) {
+    //TODO: Implement this function
+}
+
+// Rimuove le relazioni entranti da parte di una certa entità.
+void search_relation_by_name(struct Relation_node *x) {
+
+    if (x != T_NIL) {
+        search_relation_by_name(x->left);
+        search_relation_by_name(x->right);
+        if (strcmp(x->sender, eliminating_entity_name) == 0) {
+            relation_delete(CURRENT_ROOT, x);
+            FOUND = 1;
+        }
+    }
+}
+
+// Cancellazione di tutte le relazioni uscenti da un'entità
+void outgoing_relations_delete (struct Entity_node *root) {
+
+    struct Entity_node *curr = entities_root;
+
+    if (curr != T_NIL) {
+        //visita tutte le entità
+        outgoing_relations_delete(curr->left);
+        outgoing_relations_delete(curr->right);
+
+        //scorre i tipi di relazione nell'entità
+        struct Relation_type *rel = curr->key.relations;
+        while (rel != NULL) {
+
+            CURRENT_ROOT = &curr->key.relations->relations_root;
+            FOUND = 0;
+            //elimina l'istanza di relazione con l'entità da eliminare
+            search_relation_by_name(rel->relations_root);
+            //c'era un'istanza e bisogna decrementare il contatore
+            if (FOUND == 1)
+                counter_decrease(rel);
+            rel = rel->next_relation;
+        }
+    }
+}
+
+/* FUNZIONI */
+
+//aggiunge un'entità identificata da "id_ent" all'insieme delle entità monitorate; se l'entità è già monitorata, non fa nulla
+void addent(char *name) {
+
+    //costruisce una nuova entità a partire dal nome
+    struct Entity *entity = malloc(sizeof(struct Entity));
+    entity->name = name;
+    entity->relations = NULL;
+    //inserisce l'entità nell'albero
+    entity_insert(*entity);
+}
+
+// Elimina l'entità identificata da "id_ent" dall'insieme delle entità monitorate;
+// elimina tutte le relazioni di cui "id_ent" fa parte (sia come origine, che come destinazione)
+void delent(char *name) {
+
+    FOUND = 0;
+    eliminating_entity_name = name;
+    struct Entity_node *found = T_NIL;
+    found = search_entity(name);
+    if (found != T_NIL)
+        entity_node_delete(found);
+    outgoing_relations_delete(entities_root);
+    FOUND = 0;
+}
+
+// Aggiunge una relazione – identificata da "id_rel" – tra le entità "id_orig" e "id_dest", in cui "id_dest" è il
+// ricevente della relazione. Se la relazione tra "id_orig" e "id_dest" esiste già, o se almeno una delle entità non è
+// monitorata, non fa nulla.
+void addrel(char *orig, char *dest, char *rel_name) {
+
+    FOUND = 0;
+    if (search_entity(orig) == T_NIL)
+        return;
+    if (search_entity(dest) == T_NIL)
+        return;
+    //TODO: Implement this function
+    //scorrere l'entità destinazione, trovare/creare il tipo di relazione giusto, chiamare
+    //relation_instance_insert che si occuperà del flag, gestire il contatore
+    //TODO: Incrementare contatore
+
+    FOUND = 0;
+}
+
+// Elimina la relazione identificata da "id_rel" tra le entità "id_orig" e "id_dest"
+// (laddove "id_dest" è il ricevente della relazione);
+// se non c'è relazione "id_rel" tra "id_orig" e "id_dest" (con "id_dest" come ricevente), non fa nulla
+int delrel(char *orig, char *dest, char *rel_name) {
+    //TODO: Implement this function
+}
+
+// Emette in output l’elenco delle relazioni, riportando per ciascuna le entità con il maggior numero di relazioni entranti
+void report() {
+    //TODO: Implement this function
+}
+
+// Fine del cinema
+int end() {
+    //TODO: Implement this function
+}
 
 
 
