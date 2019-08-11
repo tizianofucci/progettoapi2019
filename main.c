@@ -31,11 +31,6 @@ struct Entity {
     struct Relation_type *relations;
 };
 
-// Un'istanza di relazione
-struct Relation {
-    char *sender;
-};
-
 // Un nodo dell'albero delle entità
 struct Entity_node {
     struct Entity key;
@@ -45,7 +40,7 @@ struct Entity_node {
 
 // Un nodo dell'albero delle relazioni
 struct Relation_node {
-    struct Relation key;
+    char *sender;
     struct Relation_node *left, *right, *p;
     bool color;
 } ;
@@ -55,10 +50,6 @@ struct Relation_node {
 
 // Un albero rosso-nero contenente tutte le entità
 struct Entity_node *entities_root;
-
-
-
-
 
 
 /* FUNZIONI */
@@ -131,9 +122,9 @@ struct Relation_node *search_relation(struct Entity *rel_dest, char *rel_name, c
 
     // ricerca nell'albero
     do {
-        if (strcmp(rel_orig, curr_rel->key.sender) == 0)
+        if (strcmp(rel_orig, curr_rel->sender) == 0)
             return curr_rel;
-        if (strcmp(rel_orig, curr_rel->key.sender) > 0)
+        if (strcmp(rel_orig, curr_rel->sender) > 0)
             curr_rel = curr_rel->right;
         else curr_rel = curr_rel->left;
 
@@ -146,15 +137,13 @@ struct Relation_node *search_relation(struct Entity *rel_dest, char *rel_name, c
 // Funzione di supporto per delete
 struct Entity_node *entity_successor(struct Entity_node *x) {
 
-    struct Entity_node* curr;
-
     if (x->right != T_NIL) {
         // allora il successore è il minimo del sottoalbero destro
-        curr = x->right;
         while (x->left != T_NIL) x = x->left;
         return x;
     }
     //se non c'è l'albero destro allora risalgo fino a trovare un figlio sinistro
+    struct Entity_node* curr;
     curr = x->p;
     while (curr != T_NIL && x == curr->right ) {
         x = curr;
@@ -166,14 +155,12 @@ struct Entity_node *entity_successor(struct Entity_node *x) {
 // Funzine di supporto per delete
 struct Relation_node *relation_successor(struct Relation_node *x) {
 
-    struct Relation_node* curr;
-
     if (x->right != T_NIL) {
         // allora il successore è il minimo del sottoalbero destro
-        curr = x->right;
         while (x->left != T_NIL) x = x->left;
         return x;
     }
+    struct Relation_node* curr;
     //se non c'è l'albero destro allora risalgo fino a trovare un figlio sinistro
     curr = x->p;
     while (curr != T_NIL && x == curr->right ) {
@@ -423,11 +410,11 @@ void relation_insert_fixup(struct Relation_node *tree_root, struct Relation_node
 }
 
 // Inserimento di una relazione nell'albero, con verifica per evitare duplicati
-void relation_insert(struct Relation_node **tree_root, struct Relation relation) {
+void relation_insert(struct Relation_node **tree_root, char *name) {
 
     //costruisce il nodo con la chiave
     struct Relation_node *new = malloc(sizeof(struct Relation_node));
-    new->key = relation;
+    new->sender = name;
     new->right = T_NIL;
     new->left = T_NIL;
     new->p = T_NIL;
@@ -438,9 +425,9 @@ void relation_insert(struct Relation_node **tree_root, struct Relation relation)
     //ricerca
     while (x != T_NIL) {
         y = x;
-        if (strcmp(new->key.sender, x->key.sender) < 0)
+        if (strcmp(new->sender, x->sender) < 0)
             x = x->left;
-        else if (strcmp(new->key.sender, x->key.sender) == 0)
+        else if (strcmp(new->sender, x->sender) == 0)
             //esiste già
             return;
         else x = x->right;
@@ -449,7 +436,7 @@ void relation_insert(struct Relation_node **tree_root, struct Relation relation)
     new->p = y;
     if (y == T_NIL)
         *tree_root = new;
-    else if (strcmp(new->key.sender, y->key.sender) < 0)
+    else if (strcmp(new->sender, y->sender) < 0)
         y->left = new;
     else y->right = new;
     new->color = RED;
@@ -462,7 +449,7 @@ void relation_tree_destroy(struct Relation_node *root) {
         relation_tree_destroy(root->left);
         relation_tree_destroy(root->right);
         //TODO: Check this recursive statements
-        free(root->key.sender);
+        free(root->sender);
     }
 }
 
@@ -644,7 +631,7 @@ void relation_delete (struct Relation_node **tree_root, struct Relation_node *z)
         y->p->left = x;
     else y->p->right = x;
     if (y != z)
-        z->key = y->key;
+        z->sender = y->sender;
     if (y->color == BLACK)
         relation_delete_fixup(tree_root, x);
 
