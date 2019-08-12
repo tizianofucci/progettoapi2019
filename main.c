@@ -12,7 +12,6 @@
 
 
 // Costanti per gli alberi rosso-neri
-#define T_NIL NULL
 #define RED true
 #define BLACK false
 
@@ -52,6 +51,16 @@ struct Relation_node {
 // Un albero rosso-nero contenente tutte le entità
 struct Entity_node *entities_root;
 
+// Il nodo T_NIL_ENTITY per l'albero delle entità
+struct Entity_node T_NIL_ENTITY_NODE;
+// Il puntatore a T_NIL_ENTITY
+struct Entity_node *T_NIL_ENTITY = &T_NIL_ENTITY_NODE;
+
+// Il nodo T_NIL_ENTITY per l'albero delle relazioni
+struct Relation_node T_NIL_RELATION_NODE;
+// Il puntatore a T_NIL_ENTITY
+struct Relation_node *T_NIL_RELATION = &T_NIL_RELATION_NODE;
+
 // Il nome dell'entità che si sta eliminando
 char *eliminating_entity_name;
 
@@ -67,9 +76,9 @@ struct Relation_node **CURRENT_ROOT;
 // Cerca un'entità nell'albero
 struct Entity_node *search_entity(char *name) {
 
-    if (entities_root == T_NIL)
+    if (entities_root == T_NIL_ENTITY)
         // albero vuoto
-        return T_NIL;
+        return T_NIL_ENTITY;
 
     struct Entity_node *current = entities_root;
 
@@ -80,10 +89,10 @@ struct Entity_node *search_entity(char *name) {
             current = current->right;
         else current = current->left;
 
-    } while (current != T_NIL);
+    } while (current != T_NIL_ENTITY);
 
     // non trovata
-    return  T_NIL;
+    return  T_NIL_ENTITY;
 }
 
 struct Relation_type *search_relation_type(struct Entity *entity, char name[RELATION_NAME_LENGTH]) {
@@ -97,16 +106,16 @@ struct Relation_type *search_relation_type(struct Entity *entity, char name[RELA
 // Cerca un'istanza di relazione in un'entità (per delrel)
 struct Relation_node *search_relation(struct Entity *rel_dest, char *rel_name, char *rel_orig) {
 
-    if (rel_dest == T_NIL || rel_name == T_NIL || rel_orig == T_NIL)
-        return T_NIL;
+    if (rel_dest == NULL || rel_name == NULL || rel_orig == NULL)
+        return T_NIL_RELATION;
 
     struct Relation_type *curr_rel_type = rel_dest->relations;
     // cerca se esiste quel tipo di relazione
-    while(curr_rel_type != T_NIL && strcmp(curr_rel_type->relation_name, rel_name) != 0)
+    while(curr_rel_type != NULL && strcmp(curr_rel_type->relation_name, rel_name) != 0)
         curr_rel_type = curr_rel_type->next_relation;
     // se non trovato, ritorna NIL
-    if (curr_rel_type == T_NIL)
-        return T_NIL;
+    if (curr_rel_type == NULL)
+        return T_NIL_RELATION;
 
     // se quel tipo di relazione esiste, cerca la specifica istanza
     struct Relation_node *curr_rel = curr_rel_type->relations_root;
@@ -119,24 +128,24 @@ struct Relation_node *search_relation(struct Entity *rel_dest, char *rel_name, c
             curr_rel = curr_rel->right;
         else curr_rel = curr_rel->left;
 
-    } while (curr_rel != T_NIL);
+    } while (curr_rel != T_NIL_RELATION);
 
     // non trovata
-    return  T_NIL;
+    return  T_NIL_RELATION;
 }
 
 // Funzione di supporto per delete
 struct Entity_node *entity_successor(struct Entity_node *x) {
 
-    if (x->right != T_NIL) {
+    if (x->right != T_NIL_ENTITY) {
         // allora il successore è il minimo del sottoalbero destro
-        while (x->left != T_NIL) x = x->left;
+        while (x->left != T_NIL_ENTITY) x = x->left;
         return x;
     }
     //se non c'è l'albero destro allora risalgo fino a trovare un figlio sinistro
     struct Entity_node* curr;
     curr = x->p;
-    while (curr != T_NIL && x == curr->right ) {
+    while (curr != T_NIL_ENTITY && x == curr->right ) {
         x = curr;
         curr = x->p;
     }
@@ -146,15 +155,15 @@ struct Entity_node *entity_successor(struct Entity_node *x) {
 // Funzine di supporto per delete
 struct Relation_node *relation_successor(struct Relation_node *x) {
 
-    if (x->right != T_NIL) {
+    if (x->right != T_NIL_RELATION) {
         // allora il successore è il minimo del sottoalbero destro
-        while (x->left != T_NIL) x = x->left;
+        while (x->left != T_NIL_RELATION) x = x->left;
         return x;
     }
     struct Relation_node* curr;
     //se non c'è l'albero destro allora risalgo fino a trovare un figlio sinistro
     curr = x->p;
-    while (curr != T_NIL && x == curr->right ) {
+    while (curr != T_NIL_RELATION && x == curr->right ) {
         x = curr;
         curr = x->p;
     }
@@ -169,11 +178,11 @@ void entity_left_rotate(struct Entity_node *x) {
     y = x->right;
     //il sottoalbero sinistro di y diventa quello destro di x
     x->right = y->left;
-    if (y->left == T_NIL)
+    if (y->left == T_NIL_ENTITY)
         y->left->p = x;
     //attacca il padre di x a y
     y->p = x->p;
-    if (x->p == T_NIL)
+    if (x->p == T_NIL_ENTITY)
         entities_root = y;
     else if (x == x->p->left)
         x->p->left = y;
@@ -191,11 +200,11 @@ void entity_right_rotate(struct Entity_node *x) {
     y = x->left;
     //il sottoalbero destro di y diventa quello sinistro di x
     x->left = y->right;
-    if (y->right == T_NIL)
+    if (y->right == T_NIL_ENTITY)
         y->right->p = x;
     //attacca il padre di x a y
     y->p = x->p;
-    if (x->p == T_NIL)
+    if (x->p == T_NIL_ENTITY)
         entities_root = y;
     else if (x == x->p->left)
         x->p->left = y;
@@ -213,11 +222,11 @@ void relation_left_rotate(struct Relation_node **tree_root, struct Relation_node
     y = x->right;
     //il sottoalbero sinistro di y diventa quello destro di x
     x->right = y->left;
-    if (y->left == T_NIL)
+    if (y->left == T_NIL_RELATION)
         y->left->p = x;
     //attacca il padre di x a y
     y->p = x->p;
-    if (x->p == T_NIL)
+    if (x->p == T_NIL_RELATION)
         *tree_root = y;
     else if (x == x->p->left)
         x->p->left = y;
@@ -235,11 +244,11 @@ void relation_right_rotate(struct Relation_node **tree_root, struct Relation_nod
     y = x->left;
     //il sottoalbero destro di y diventa quello sinistro di x
     x->left = y->right;
-    if (y->right == T_NIL)
+    if (y->right == T_NIL_RELATION)
         y->right->p = x;
     //attacca il padre di x a y
     y->p = x->p;
-    if (x->p == T_NIL)
+    if (x->p == T_NIL_RELATION)
         *tree_root = y;
     else if (x == x->p->left)
         x->p->left = y;
@@ -312,15 +321,15 @@ void entity_insert(struct Entity entity) {
     //costruisce il nodo con la chiave
     struct Entity_node *new = malloc(sizeof(struct Entity_node));
     new->key = entity;
-    new->right = T_NIL;
-    new->left = T_NIL;
-    new->p = T_NIL;
+    new->right = T_NIL_ENTITY;
+    new->left = T_NIL_ENTITY;
+    new->p = T_NIL_ENTITY;
 
     struct Entity_node *x, *y;
-    y = T_NIL;
+    y = T_NIL_ENTITY;
     x = entities_root;
     //ricerca
-    while (x != T_NIL) {
+    while (x != T_NIL_ENTITY) {
         y = x;
         if (strcmp(new->key.name, x->key.name) < 0)
             x = x->left;
@@ -331,7 +340,7 @@ void entity_insert(struct Entity entity) {
     }
     //l'entità non era già presente
     new->p = y;
-    if (y == T_NIL)
+    if (y == T_NIL_ENTITY)
         entities_root = new;
     else if (strcmp(new->key.name, y->key.name) < 0)
         y->left = new;
@@ -405,15 +414,15 @@ void relation_instance_insert(struct Relation_node **tree_root, char *name) {
     //costruisce il nodo con la chiave
     struct Relation_node *new = malloc(sizeof(struct Relation_node));
     new->sender = name;
-    new->right = T_NIL;
-    new->left = T_NIL;
-    new->p = T_NIL;
+    new->right = T_NIL_RELATION;
+    new->left = T_NIL_RELATION;
+    new->p = T_NIL_RELATION;
 
     struct Relation_node *x, *y;
-    y = T_NIL;
+    y = T_NIL_RELATION;
     x = *tree_root;
     //ricerca
-    while (x != T_NIL) {
+    while (x != T_NIL_RELATION) {
         y = x;
         if (strcmp(new->sender, x->sender) < 0)
             x = x->left;
@@ -426,7 +435,7 @@ void relation_instance_insert(struct Relation_node **tree_root, char *name) {
     }
     //l'entità non era già presente
     new->p = y;
-    if (y == T_NIL)
+    if (y == T_NIL_RELATION)
         *tree_root = new;
     else if (strcmp(new->sender, y->sender) < 0)
         y->left = new;
@@ -437,7 +446,7 @@ void relation_instance_insert(struct Relation_node **tree_root, char *name) {
 
 // Distrugge un intero albero di relazioni, ma non la radice
 void relation_tree_destroy(struct Relation_node *root) {
-    if (root != T_NIL) {
+    if (root != T_NIL_RELATION) {
         relation_tree_destroy(root->left);
         relation_tree_destroy(root->right);
         free(root->sender);
@@ -450,7 +459,7 @@ void entity_destroy(struct Entity_node *x) {
     struct Relation_type *curr, *next;
     curr = x->key.relations;
     //scorre tutti i tipi di relazione
-    while(curr != T_NIL) {
+    while(curr != NULL) {
         next = curr->next_relation;
         free(curr->relation_name);
         //dealloca l'intero albero
@@ -484,7 +493,7 @@ void entity_delete_fixup (struct Entity_node *x) {
 
     struct Entity_node *w;
 
-    if (x->color == RED || x->p == T_NIL)
+    if (x->color == RED || x->p == T_NIL_ENTITY)
         x->color = BLACK;
     else if (x == x->p->left) {
         w = x->p->right;
@@ -543,14 +552,14 @@ void entity_node_delete (struct Entity_node *z) {
     if (z == NULL)
         return;
 
-    if (z->left == T_NIL || z->right == T_NIL)
+    if (z->left == T_NIL_ENTITY || z->right == T_NIL_ENTITY)
         y = z;
     else y = entity_successor(z);
-    if (y->left != T_NIL)
+    if (y->left != T_NIL_ENTITY)
         x = y->left;
     else x = y->right;
     x->p = y->p;
-    if (y->p == T_NIL)
+    if (y->p == T_NIL_ENTITY)
         entities_root = x;
     else if (y == y->p->left)
         y->p->left = x;
@@ -568,7 +577,7 @@ void relation_delete_fixup (struct Relation_node **tree_root, struct Relation_no
 
     struct Relation_node *w;
 
-    if (x->color == RED || x->p == T_NIL)
+    if (x->color == RED || x->p == T_NIL_RELATION)
         x->color = BLACK;
     else if (x == x->p->left) {
         w = x->p->right;
@@ -624,14 +633,14 @@ void relation_delete (struct Relation_node **tree_root, struct Relation_node *z)
 
     struct Relation_node *x, *y;
 
-    if (z->left == T_NIL || z->right == T_NIL)
+    if (z->left == T_NIL_RELATION || z->right == T_NIL_RELATION)
         y = z;
     else y = relation_successor(z);
-    if (y->left != T_NIL)
+    if (y->left != T_NIL_RELATION)
         x = y->left;
     else x = y->right;
     x->p = y->p;
-    if (y->p == T_NIL)
+    if (y->p == T_NIL_RELATION)
         *tree_root = x;
     else if (y == y->p->left)
         y->p->left = x;
@@ -655,7 +664,7 @@ void counter_increase (struct Relation_type *relation) {
 // Rimuove le relazioni entranti da parte di una certa entità.
 void search_relation_by_name(struct Relation_node *x) {
 
-    if (x != T_NIL) {
+    if (x != T_NIL_RELATION) {
         search_relation_by_name(x->left);
         search_relation_by_name(x->right);
         if (strcmp(x->sender, eliminating_entity_name) == 0) {
@@ -670,7 +679,7 @@ void outgoing_relations_delete (struct Entity_node *root) {
 
     struct Entity_node *curr = entities_root;
 
-    if (curr != T_NIL) {
+    if (curr != T_NIL_ENTITY) {
         //visita tutte le entità
         outgoing_relations_delete(curr->left);
         outgoing_relations_delete(curr->right);
@@ -710,9 +719,9 @@ void delent(char *name) {
 
     FOUND = 0;
     eliminating_entity_name = name;
-    struct Entity_node *found = T_NIL;
+    struct Entity_node *found = T_NIL_ENTITY;
     found = search_entity(name);
-    if (found != T_NIL)
+    if (found != T_NIL_ENTITY)
         entity_node_delete(found);
     outgoing_relations_delete(entities_root);
     FOUND = 0;
@@ -724,9 +733,9 @@ void delent(char *name) {
 void addrel(char *orig, char *dest, char *rel_name) {
 
     FOUND = 0;
-    if (search_entity(orig) == T_NIL)
+    if (search_entity(orig) == T_NIL_ENTITY)
         return;
-    if (search_entity(dest) == T_NIL)
+    if (search_entity(dest) == T_NIL_ENTITY)
         return;
     //TODO: Implement this function
     //scorrere l'entità destinazione, trovare/creare il tipo di relazione giusto, chiamare
@@ -759,8 +768,12 @@ int end() {
 int main() {
 
     // inizializza l'albero vuoto
-    entities_root = T_NIL;
+    entities_root = T_NIL_ENTITY;
 
+
+    //test
+    addent("Giovanni");
+    delent("Giovanni");
 
 
     return 0;
