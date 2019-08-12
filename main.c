@@ -517,16 +517,18 @@ void entity_delete_fixup (struct Entity_node *x) {
             w->color = RED;
             entity_delete_fixup(x->p);
         }
-        else if (w->right->color == BLACK) {
-            w->left->color = BLACK;
-            w->color = RED;
-            entity_right_rotate(w);
-            w = x->p->right;
-        }
+        else {
+            if (w->right->color == BLACK) {
+                w->left->color = BLACK;
+                w->color = RED;
+                entity_right_rotate(w);
+                w = x->p->right;
+            }
         w->color = x->p->color;
         x->p->color = BLACK;
         w->right->color = BLACK;
         entity_left_rotate(x->p);
+        }
     }
     else {
         w = x->p->left;
@@ -575,7 +577,7 @@ void entity_node_delete (struct Entity_node *z) {
     else y->p->right = x;
     if (y != z)
         z->key = y->key;
-    if (y->color == BLACK)
+    if (y->color == BLACK && y != T_NIL_ENTITY)
         entity_delete_fixup(x);
 
     entity_destroy(z);
@@ -888,6 +890,7 @@ int main() {
     delent("52");
     delent("53");
     delent("54");
+
 
 
 
