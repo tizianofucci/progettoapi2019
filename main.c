@@ -9,6 +9,7 @@
 // Capacità iniziale del vettore dinamico
 #define INITIAL_CAPACITY 10
 #define RELATION_NAME_LENGTH
+#define BUFFER_SIZE 50
 
 
 // Costanti per gli alberi rosso-neri
@@ -16,6 +17,7 @@
 #define BLACK false
 
 /* STRUTTURE */
+
 
 // Un tipo di relazione collegato a un'entità
 struct Relation_type {
@@ -33,7 +35,7 @@ struct Entity {
 
 // Un nodo dell'albero delle entità
 struct Entity_node {
-    struct Entity key;
+    struct Entity *key;
     struct Entity_node *left, *right, *p;
     bool color;
 };
@@ -48,11 +50,15 @@ struct Relation_node {
 
 /* VARIABILI GLOBALI */
 
+// Buffer per salvare temporaneamente stringhe
+char buffer[BUFFER_SIZE];
+
 // Un albero rosso-nero contenente tutte le entità
 struct Entity_node *entities_root;
 
+
 // Il nodo T_NIL_ENTITY per l'albero delle entità
-struct Entity_node T_NIL_ENTITY_NODE;
+struct Entity_node T_NIL_ENTITY_NODE = {NULL, NULL, NULL, BLACK};
 // Il puntatore a T_NIL_ENTITY
 struct Entity_node *T_NIL_ENTITY = &T_NIL_ENTITY_NODE;
 
@@ -83,9 +89,9 @@ struct Entity_node *search_entity(char *name) {
     struct Entity_node *current = entities_root;
 
     do {
-        if (strcmp(name, current->key.name) == 0)
+        if (strcmp(name, current->key->name) == 0)
             return current;
-        if (strcmp(name, current->key.name) > 0)
+        if (strcmp(name, current->key->name) > 0)
             current = current->right;
         else current = current->left;
 
@@ -316,14 +322,7 @@ void entity_insert_fixup(struct Entity_node *entity) {
 }
 
 // Inserimento di un'entità nell'albero, con verifica per evitare duplicati
-void entity_insert(struct Entity entity) {
-
-    //costruisce il nodo con la chiave
-    struct Entity_node *new = malloc(sizeof(struct Entity_node));
-    new->key = entity;
-    new->right = T_NIL_ENTITY;
-    new->left = T_NIL_ENTITY;
-    new->p = T_NIL_ENTITY;
+void entity_insert(char *name) {
 
     struct Entity_node *x, *y;
     y = T_NIL_ENTITY;
@@ -331,18 +330,28 @@ void entity_insert(struct Entity entity) {
     //ricerca
     while (x != T_NIL_ENTITY) {
         y = x;
-        if (strcmp(new->key.name, x->key.name) < 0)
+        if (strcmp(name, x->key->name) < 0)
             x = x->left;
-        else if (strcmp(new->key.name, x->key.name) == 0)
+        else if (strcmp(name, x->key->name) == 0)
             //esiste già
             return;
         else x = x->right;
     }
-    //l'entità non era già presente
+    //l'entità non era già presente, costruisce una nuova entità a partire dal nome
+    struct Entity *entity = malloc(sizeof(struct Entity));
+    entity->name = malloc(strlen(name) + 1);
+    strcpy(entity->name, name);
+    entity->relations = NULL;
+
+    //costruisce il nodo con la chiave
+    struct Entity_node *new = malloc(sizeof(struct Entity_node));
+    new->key = entity;
+    new->right = T_NIL_ENTITY;
+    new->left = T_NIL_ENTITY;
     new->p = y;
     if (y == T_NIL_ENTITY)
         entities_root = new;
-    else if (strcmp(new->key.name, y->key.name) < 0)
+    else if (strcmp(new->key->name, y->key->name) < 0)
         y->left = new;
     else y->right = new;
     new->color = RED;
@@ -455,9 +464,9 @@ void relation_tree_destroy(struct Relation_node *root) {
 
 // Deallocazione di un'intera entità
 void entity_destroy(struct Entity_node *x) {
-    free(x->key.name);
+    free(x->key->name);
     struct Relation_type *curr, *next;
-    curr = x->key.relations;
+    curr = x->key->relations;
     //scorre tutti i tipi di relazione
     while(curr != NULL) {
         next = curr->next_relation;
@@ -469,6 +478,7 @@ void entity_destroy(struct Entity_node *x) {
         curr = next;
     }
     //dealloca il nodo
+    free(x->key);
     free(x);
 }
 
@@ -541,7 +551,6 @@ void entity_delete_fixup (struct Entity_node *x) {
         w->left->color = BLACK;
         entity_right_rotate(x->p);
     }
-    // forse x->color = BLACK?
 }
 
 // Cancellazione di un'entità dall'albero
@@ -677,7 +686,7 @@ void search_relation_by_name(struct Relation_node *x) {
 // Cancellazione di tutte le relazioni uscenti da un'entità
 void outgoing_relations_delete (struct Entity_node *root) {
 
-    struct Entity_node *curr = entities_root;
+    struct Entity_node *curr = root;
 
     if (curr != T_NIL_ENTITY) {
         //visita tutte le entità
@@ -685,10 +694,10 @@ void outgoing_relations_delete (struct Entity_node *root) {
         outgoing_relations_delete(curr->right);
 
         //scorre i tipi di relazione nell'entità
-        struct Relation_type *rel = curr->key.relations;
+        struct Relation_type *rel = curr->key->relations;
         while (rel != NULL) {
 
-            CURRENT_ROOT = &curr->key.relations->relations_root;
+            CURRENT_ROOT = &curr->key->relations->relations_root;
             FOUND = 0;
             //elimina l'istanza di relazione con l'entità da eliminare
             search_relation_by_name(rel->relations_root);
@@ -705,12 +714,9 @@ void outgoing_relations_delete (struct Entity_node *root) {
 //aggiunge un'entità identificata da "id_ent" all'insieme delle entità monitorate; se l'entità è già monitorata, non fa nulla
 void addent(char *name) {
 
-    //costruisce una nuova entità a partire dal nome
-    struct Entity *entity = malloc(sizeof(struct Entity));
-    entity->name = name;
-    entity->relations = NULL;
+
     //inserisce l'entità nell'albero
-    entity_insert(*entity);
+    entity_insert(name);
 }
 
 // Elimina l'entità identificata da "id_ent" dall'insieme delle entità monitorate;
@@ -721,8 +727,9 @@ void delent(char *name) {
     eliminating_entity_name = name;
     struct Entity_node *found = T_NIL_ENTITY;
     found = search_entity(name);
-    if (found != T_NIL_ENTITY)
+    if (found != T_NIL_ENTITY) {
         entity_node_delete(found);
+    }
     outgoing_relations_delete(entities_root);
     FOUND = 0;
 }
@@ -748,7 +755,7 @@ void addrel(char *orig, char *dest, char *rel_name) {
 // Elimina la relazione identificata da "id_rel" tra le entità "id_orig" e "id_dest"
 // (laddove "id_dest" è il ricevente della relazione);
 // se non c'è relazione "id_rel" tra "id_orig" e "id_dest" (con "id_dest" come ricevente), non fa nulla
-int delrel(char *orig, char *dest, char *rel_name) {
+void delrel(char *orig, char *dest, char *rel_name) {
     //TODO: Implement this function
 }
 
@@ -758,7 +765,7 @@ void report() {
 }
 
 // Fine del cinema
-int end() {
+void end() {
     //TODO: Implement this function
 }
 
@@ -767,13 +774,121 @@ int end() {
 
 int main() {
 
-    // inizializza l'albero vuoto
+    //inizializza albero
     entities_root = T_NIL_ENTITY;
 
 
-    //test
-    addent("Giovanni");
-    delent("Giovanni");
+    addent("0");
+    addent("1");
+    addent("2");
+    addent("3");
+    addent("4");
+    addent("5");
+    addent("6");
+    addent("7");
+    addent("8");
+    addent("9");
+    addent("10");
+    addent("11");
+    addent("12");
+    addent("13");
+    addent("14");
+    addent("15");
+    addent("16");
+    addent("17");
+    addent("18");
+    addent("19");
+    addent("20");
+    addent("21");
+    addent("22");
+    addent("23");
+    addent("24");
+    addent("25");
+    addent("26");
+    addent("27");
+    addent("28");
+    addent("29");
+    addent("30");
+    addent("31");
+    addent("32");
+    addent("33");
+    addent("34");
+    addent("35");
+    addent("36");
+    addent("37");
+    addent("38");
+    addent("39");
+    addent("40");
+    addent("41");
+    addent("42");
+    addent("43");
+    addent("44");
+    addent("45");
+    addent("46");
+    addent("47");
+    addent("48");
+    addent("49");
+    addent("50");
+    addent("51");
+    addent("52");
+    addent("53");
+    addent("54");
+    delent("0");
+    delent("1");
+    delent("2");
+    delent("3");
+    delent("4");
+    delent("5");
+    delent("6");
+    delent("7");
+    delent("8");
+    delent("9");
+    delent("10");
+    delent("11");
+    delent("12");
+    delent("13");
+    delent("14");
+    delent("15");
+    delent("16");
+    delent("17");
+    delent("18");
+    delent("19");
+    delent("20");
+    delent("21");
+    delent("22");
+    delent("23");
+    delent("24");
+    delent("25");
+    delent("26");
+    delent("27");
+    delent("28");
+    delent("29");
+    delent("30");
+    delent("31");
+    delent("32");
+    delent("33");
+    delent("34");
+    delent("35");
+    delent("36");
+    delent("37");
+    delent("38");
+    delent("39");
+    delent("40");
+    delent("41");
+    delent("42");
+    delent("43");
+    delent("44");
+    delent("45");
+    delent("46");
+    delent("47");
+    delent("48");
+    delent("49");
+    delent("50");
+    delent("51");
+    delent("52");
+    delent("53");
+    delent("54");
+
 
 
     return 0;

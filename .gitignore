@@ -7,3 +7,6 @@ cmake-build-debug
 
 # Esempi
 suite/
+
+# Eseguibile
+main
