@@ -276,7 +276,7 @@ void relation_right_rotate(struct Relation_node **tree_root, struct Relation_nod
 // Funzione di supporto all'inserimento
 void entity_insert_fixup(struct Entity_node *z) {
 
-    struct Entity_node *x, *y;
+    struct Entity_node *y;
 
     while (z->p->color == RED) {
         if (z->p == z->p->p->left) {
@@ -727,9 +727,8 @@ void delent(char *name) {
     if (found != T_NIL_ENTITY) {
         entity_node_delete(found, entities_root);
         outgoing_relations_delete(entities_root);
+        entity_destroy(found);
     }
-    //bug qui dentro
-    entity_destroy(found);
     FOUND = 0;
 }
 
