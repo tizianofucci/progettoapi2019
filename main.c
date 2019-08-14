@@ -45,7 +45,7 @@ struct Relation_node {
     char *sender;
     struct Relation_node *left, *right, *p;
     bool color;
-} ;
+};
 
 
 /* VARIABILI GLOBALI */
@@ -107,7 +107,7 @@ struct Entity_node *search_entity(char *name) {
     } while (current != T_NIL_ENTITY);
 
     // non trovata
-    return  T_NIL_ENTITY;
+    return T_NIL_ENTITY;
 }
 
 struct Relation_type *search_relation_type(struct Entity *entity, char name[RELATION_NAME_LENGTH]) {
@@ -126,7 +126,7 @@ struct Relation_node *search_relation(struct Entity *rel_dest, char *rel_name, c
 
     struct Relation_type *curr_rel_type = rel_dest->relations;
     // cerca se esiste quel tipo di relazione
-    while(curr_rel_type != NULL && strcmp(curr_rel_type->relation_name, rel_name) != 0)
+    while (curr_rel_type != NULL && strcmp(curr_rel_type->relation_name, rel_name) != 0)
         curr_rel_type = curr_rel_type->next_relation;
     // se non trovato, ritorna NIL
     if (curr_rel_type == NULL)
@@ -146,7 +146,7 @@ struct Relation_node *search_relation(struct Entity *rel_dest, char *rel_name, c
     } while (curr_rel != T_NIL_RELATION);
 
     // non trovata
-    return  T_NIL_RELATION;
+    return T_NIL_RELATION;
 }
 
 // Funzione di supporto per delete
@@ -158,9 +158,9 @@ struct Entity_node *entity_successor(struct Entity_node *x) {
         return x;
     }
     //se non c'è l'albero destro allora risalgo fino a trovare un figlio sinistro
-    struct Entity_node* y;
+    struct Entity_node *y;
     y = x->p;
-    while (y != T_NIL_ENTITY && x == y->right ) {
+    while (y != T_NIL_ENTITY && x == y->right) {
         x = y;
         y = x->p;
     }
@@ -175,10 +175,10 @@ struct Relation_node *relation_successor(struct Relation_node *x) {
         while (x->left != T_NIL_RELATION) x = x->left;
         return x;
     }
-    struct Relation_node* curr;
+    struct Relation_node *curr;
     //se non c'è l'albero destro allora risalgo fino a trovare un figlio sinistro
     curr = x->p;
-    while (curr != T_NIL_RELATION && x == curr->right ) {
+    while (curr != T_NIL_RELATION && x == curr->right) {
         x = curr;
         curr = x->p;
     }
@@ -286,8 +286,7 @@ void entity_insert_fixup(struct Entity_node *z) {
                 y->color = BLACK;
                 z->p->p->color = RED;
                 z = z->p->p;
-            }
-            else {
+            } else {
                 if (z == z->p->right) {
                     z = z->p;
                     entity_left_rotate(z);
@@ -296,16 +295,14 @@ void entity_insert_fixup(struct Entity_node *z) {
                 z->p->p->color = RED;
                 entity_right_rotate(z->p->p);
             }
-        }
-        else {
+        } else {
             y = z->p->p->left;
             if (y->color == RED) {
                 z->p->color = BLACK;
                 y->color = BLACK;
                 z->p->p->color = RED;
                 z = z->p->p;
-            }
-            else {
+            } else {
                 if (z == z->p->left) {
                     z = z->p;
                     entity_right_rotate(z);
@@ -376,10 +373,9 @@ void relation_insert_fixup(struct Relation_node *tree_root, struct Relation_node
                 if (y->color == RED) {
                     x->color = BLACK;
                     y->color = BLACK;
-                    x->p->color =RED;
+                    x->p->color = RED;
                     relation_insert_fixup(tree_root, x->p);
-                }
-                else {
+                } else {
                     if (relation == x->right) {
                         relation = x;
                         relation_left_rotate(&tree_root, relation);
@@ -389,17 +385,15 @@ void relation_insert_fixup(struct Relation_node *tree_root, struct Relation_node
                     x->p->color = RED;
                     relation_right_rotate(&tree_root, x->p);
                 }
-            }
-            else {
+            } else {
                 //x è figlio destro
                 y = x->p->left;
                 if (y->color == RED) {
                     x->color = BLACK;
                     y->color = BLACK;
-                    x->p->color =RED;
+                    x->p->color = RED;
                     relation_insert_fixup(tree_root, x->p);
-                }
-                else {
+                } else {
                     if (relation == x->left) {
                         relation = x;
                         relation_right_rotate(&tree_root, relation);
@@ -441,8 +435,7 @@ void relation_instance_insert(struct Relation_node **tree_root, char *name) {
             //esiste già, non aumentare contatore
             FOUND = 1;
             return;
-            }
-        else x = x->right;
+        } else x = x->right;
     }
     //l'entità non era già presente
     new->p = y;
@@ -470,7 +463,7 @@ void entity_destroy(struct Entity_node *x) {
     struct Relation_type *curr, *next;
     curr = x->key->relations;
     //scorre tutti i tipi di relazione
-    while(curr != NULL) {
+    while (curr != NULL) {
         next = curr->next_relation;
         free(curr->relation_name);
         //dealloca l'intero albero
@@ -480,6 +473,7 @@ void entity_destroy(struct Entity_node *x) {
         curr = next;
     }
     //dealloca il nodo
+    free(x->key->relations);
     free(x->key);
     free(x);
 }
@@ -501,91 +495,91 @@ void relation_destroy(struct Relation_type *relation, struct Relation_type *prev
 }
 
 // Funzione di supporto alla cancellazione
-void entity_delete_fixup (struct Entity_node *x) {
+void entity_delete_fixup(struct Entity_node *x) {
 
     struct Entity_node *w;
 
-    if (x->color == RED || x->p == T_NIL_ENTITY)
-        x->color = BLACK;
-    else if (x == x->p->left) {
-        w = x->p->right;
-        if (w->color == RED) {
-            w->color = BLACK;
-            x->p->color = RED;
-            entity_left_rotate(x->p);
+    while (x != entities_root && x->color == BLACK) {
+        if (x == x->p->left) {
             w = x->p->right;
-        }
-        if (w->left->color == BLACK && w->right->color == BLACK) {
-            w->color = RED;
-            entity_delete_fixup(x->p);
-        }
-        else {
-            if (w->right->color == BLACK) {
-                w->left->color = BLACK;
-                w->color = RED;
-                entity_right_rotate(w);
+            if (w->color == RED) {
+                w->color = BLACK;
+                x->p->color = RED;
+                entity_left_rotate(x->p);
                 w = x->p->right;
             }
-            w->color = x->p->color;
-            x->p->color = BLACK;
-            w->right->color = BLACK;
-            entity_left_rotate(x->p);
-        }
-    }
-    else {
-        w = x->p->left;
-        if (w->color == RED) {
-            w->color = BLACK;
-            x->p->color = RED;
-            entity_right_rotate(x->p);
-            w = x->p->left;
-        }
-        if (w->right->color == BLACK && w->left->color == BLACK) {
-            w->color = RED;
-            entity_delete_fixup(x->p);
-        }
-        else {
-            if (w->left->color == BLACK) {
-            w->right->color = BLACK;
-            w->color = RED;
-            entity_left_rotate(w);
-            w = x->p->left;
+            if (w->left->color == BLACK && w->right->color == BLACK) {
+                w->color = RED;
+                x = x->p;
+            } else {
+                if (w->right->color == BLACK) {
+                    w->left->color = BLACK;
+                    w->color = BLACK;
+                    entity_right_rotate(w);
+                    w = x->p->right;
+                }
+                w->color = x->p->color;
+                x->p->color = BLACK;
+                w->right->color = BLACK;
+                entity_left_rotate(x->p);
+                x = entities_root;
             }
-            w->color = x->p->color;
-            x->p->color = BLACK;
-            w->left->color = BLACK;
-            entity_right_rotate(x->p);
+        } else {
+            w = x->p->left;
+            if (w->color == RED) {
+                w->color = BLACK;
+                x->p->color = RED;
+                entity_right_rotate(x->p);
+                w = x->p->left;
+            }
+            if (w->right->color == BLACK && w->left->color == BLACK) {
+                w->color = RED;
+                x = x->p;
+            } else {
+                if (w->left->color == BLACK) {
+                    w->right->color = BLACK;
+                    w->color = BLACK;
+                    entity_left_rotate(w);
+                    w = x->p->left;
+                }
+                w->color = x->p->color;
+                x->p->color = BLACK;
+                w->left->color = BLACK;
+                entity_right_rotate(x->p);
+                x = entities_root;
+            }
         }
     }
+    x->color = BLACK;
 }
 
 // Cancellazione di un'entità dall'albero
-void entity_node_delete (struct Entity_node *z, struct Entity_node *root) {
+void entity_node_delete(struct Entity_node *z, struct Entity_node *root) {
 
     struct Entity_node *x, *y;
 
     if (z->left == T_NIL_ENTITY || z->right == T_NIL_ENTITY)
         y = z;
     else y = entity_successor(z);
-    if (y->left != T_NIL_ENTITY)
+    if (y->left == T_NIL_ENTITY)
         x = y->left;
     else x = y->right;
     x->p = y->p;
     if (y->p == T_NIL_ENTITY)
         entities_root = x;
-    else if (y == y->p->left)
-        y->p->left = x;
-    else y->p->right = x;
+    else {
+        if (y == y->p->left)
+            y->p->left = x;
+        else y->p->right = x;
+    }
     if (y != z)
         z->key = y->key;
     if (y->color == BLACK)
         entity_delete_fixup(x);
-
-    //entity_destroy(z);
 }
 
 // Funzione di supporto alla cancellazione
-void relation_delete_fixup (struct Relation_node **tree_root, struct Relation_node *x) {
+void relation_delete_fixup(struct Relation_node **tree_root, struct Relation_node *x) {
 
     struct Relation_node *w;
 
@@ -602,8 +596,7 @@ void relation_delete_fixup (struct Relation_node **tree_root, struct Relation_no
         if (w->left->color == BLACK && w->right->color == BLACK) {
             w->color = RED;
             relation_delete_fixup(tree_root, x->p);
-        }
-        else {
+        } else {
             if (w->right->color == BLACK) {
                 w->left->color = BLACK;
                 w->color = RED;
@@ -616,8 +609,7 @@ void relation_delete_fixup (struct Relation_node **tree_root, struct Relation_no
             relation_left_rotate(tree_root, x->p);
         }
 
-    }
-    else {
+    } else {
         w = x->p->left;
         if (w->color == RED) {
             w->color = BLACK;
@@ -628,8 +620,7 @@ void relation_delete_fixup (struct Relation_node **tree_root, struct Relation_no
         if (w->right->color == BLACK && w->left->color == BLACK) {
             w->color = RED;
             relation_delete_fixup(tree_root, x->p);
-        }
-        else {
+        } else {
             if (w->left->color == BLACK) {
                 w->right->color = BLACK;
                 w->color = RED;
@@ -645,7 +636,7 @@ void relation_delete_fixup (struct Relation_node **tree_root, struct Relation_no
 }
 
 // Cancellazione di un'entità dall'albero e deallocazione del nodo
-void relation_delete (struct Relation_node **tree_root, struct Relation_node *z) {
+void relation_delete(struct Relation_node **tree_root, struct Relation_node *z) {
 
     struct Relation_node *x, *y;
 
@@ -669,11 +660,11 @@ void relation_delete (struct Relation_node **tree_root, struct Relation_node *z)
     relation_instance_destroy(z);
 }
 
-void counter_decrease (struct Relation_type *relation) {
+void counter_decrease(struct Relation_type *relation) {
     //TODO: Implement this function
 }
 
-void counter_increase (struct Relation_type *relation) {
+void counter_increase(struct Relation_type *relation) {
     //TODO: Implement this function
 }
 
@@ -691,7 +682,7 @@ void search_relation_by_name(struct Relation_node *x) {
 }
 
 // Cancellazione di tutte le relazioni uscenti da un'entità
-void outgoing_relations_delete (struct Entity_node *root) {
+void outgoing_relations_delete(struct Entity_node *root) {
 
     struct Entity_node *curr = root;
 
@@ -735,8 +726,10 @@ void delent(char *name) {
     found = search_entity(name);
     if (found != T_NIL_ENTITY) {
         entity_node_delete(found, entities_root);
-        //outgoing_relations_delete(entities_root);
+        outgoing_relations_delete(entities_root);
     }
+    //bug qui dentro
+    entity_destroy(found);
     FOUND = 0;
 }
 
@@ -777,8 +770,6 @@ void end() {
 }
 
 
-
-
 int main() {
 
     //inizializza albero
@@ -796,8 +787,86 @@ int main() {
     T_NIL_RELATION_NODE.color = BLACK;
 
 
-
-
+    addent("-");
+    addent("-----");
+    addent("---");
+    addent("--");
+    addent(".");
+    addent(".....");
+    addent("...");
+    addent("..");
+    addent("/");
+    addent("/////");
+    addent("///");
+    addent("//");
+    addent("0");
+    addent("00000");
+    addent("000");
+    addent("00");
+    addent("1");
+    addent("11111");
+    addent("111");
+    addent("11");
+    addent("2");
+    addent("22222");
+    addent("222");
+    addent("22");
+    addent("3");
+    addent("33333");
+    addent("333");
+    addent("33");
+    addent("4");
+    addent("44444");
+    addent("444");
+    addent("44");
+    addent("5");
+    addent("55555");
+    addent("555");
+    addent("55");
+    addent("6");
+    addent("66666");
+    addent("666");
+    addent("66");
+    addent("7");
+    addent("77777");
+    addent("777");
+    addent("77");
+    addent("8");
+    addent("88888");
+    addent("888");
+    addent("88");
+    addent("9");
+    addent("99999");
+    addent("999");
+    addent("99");
+    addent(":");
+    addent(":::::");
+    addent(":::");
+    addent("::");
+    addent(";");
+    addent(";;;;;");
+    addent(";;;");
+    addent(";;");
+    addent("<");
+    addent("<<<<<");
+    addent("<<<");
+    addent("<<");
+    addent("=");
+    addent("=====");
+    addent("===");
+    addent("==");
+    addent(">");
+    addent(">>>>>");
+    addent(">>>");
+    addent(">>");
+    addent("?");
+    addent("?????");
+    addent("???");
+    addent("??");
+    addent("@");
+    addent("@@@@@");
+    addent("@@@");
+    addent("@@");
     addent("A");
     addent("AAAAA");
     addent("AAA");
@@ -885,17 +954,248 @@ int main() {
     addent("V");
     addent("VVVVV");
     addent("VVV");
+    addent("VV");
+    addent("W");
+    addent("WWWWW");
+    addent("WWW");
+    addent("WW");
+    addent("X");
+    addent("XXXXX");
+    addent("XXX");
+    addent("XX");
+    addent("Y");
+    addent("YYYYY");
+    addent("YYY");
+    addent("YY");
+    addent("Z");
+    addent("ZZZZZ");
+    addent("ZZZ");
+    addent("ZZ");
+    addent("[");
+    addent("[[[[[");
+    addent("[[[");
+    addent("[[");
+    addent("]");
+    addent("]]]]]");
+    addent("]]]");
+    addent("]]");
+    addent("^");
+    addent("^^^^^");
+    addent("^^^");
+    addent("^^");
+    addent("_");
+    addent("_____");
+    addent("___");
+    addent("__");
+    addent("`");
+    addent("`````");
+    addent("```");
+    addent("``");
+    addent("a");
+    addent("aaaaa");
+    addent("aaa");
+    addent("aa");
+    addent("b");
+    addent("bbbbb");
+    addent("bbb");
+    addent("bb");
+    addent("c");
+    addent("ccccc");
+    addent("ccc");
+    addent("cc");
+    addent("d");
+    addent("ddddd");
+    addent("ddd");
+    addent("dd");
+    addent("e");
+    addent("eeeee");
+    addent("eee");
+    addent("ee");
+    addent("f");
+    addent("fffff");
+    addent("fff");
+    addent("ff");
+    addent("g");
+    addent("ggggg");
+    addent("ggg");
+    addent("gg");
+    addent("h");
+    addent("hhhhh");
+    addent("hhh");
+    addent("hh");
+    addent("i");
+    addent("iiiii");
+    addent("iii");
+    addent("ii");
+    addent("j");
+    addent("jjjjj");
+    addent("jjj");
+    addent("jj");
+    addent("k");
+    addent("kkkkk");
+    addent("kkk");
+    addent("kk");
+    addent("l");
+    addent("lllll");
+    addent("lll");
+    addent("ll");
+    addent("m");
+    addent("mmmmm");
+    addent("mmm");
+    addent("mm");
+    addent("n");
+    addent("nnnnn");
+    addent("nnn");
+    addent("nn");
+    addent("o");
+    addent("ooooo");
+    addent("ooo");
+    addent("oo");
+    addent("p");
+    addent("ppppp");
+    addent("ppp");
+    addent("pp");
+    addent("q");
+    addent("qqqqq");
+    addent("qqq");
+    addent("qq");
+    addent("r");
+    addent("rrrrr");
+    addent("rrr");
+    addent("rr");
+    addent("s");
+    addent("sssss");
+    addent("sss");
+    addent("ss");
+    addent("t");
+    addent("ttttt");
+    addent("ttt");
+    addent("tt");
+    addent("u");
+    addent("uuuuu");
+    addent("uuu");
+    addent("uu");
+    addent("v");
+    addent("vvvvv");
+    addent("vvv");
+    addent("vv");
+    addent("w");
+    addent("wwwww");
+    addent("www");
+    addent("ww");
+    addent("x");
+    addent("xxxxx");
+    addent("xxx");
+    addent("xx");
+    addent("y");
+    addent("yyyyy");
+    addent("yyy");
+    addent("yy");
+    addent("z");
+    addent("zzzzz");
+    addent("zzz");
+    addent("zz");
+    addent("{");
+    addent("{{{{{");
+    addent("{{{");
+    addent("{{");
+    addent("|");
+    addent("|||||");
+    addent("|||");
+    addent("||");
+    addent("}");
+    addent("}}}}}");
+    addent("}}}");
+    addent("}}");
 
     inorder_entity_tree_walk(entities_root);
     puts("");
 
 
+    delent("-");
+    delent("-----");
+    delent("---");
+    delent("--");
+    delent(".");
+    delent(".....");
+    delent("...");
+    delent("..");
+    delent("/");
+    delent("/////");
+    delent("///");
+    delent("//");
+    delent("0");
+    delent("00000");
+    delent("000");
+    delent("00");
+    delent("1");
+    delent("11111");
+    delent("111");
+    delent("11");
+    delent("2");
+    delent("22222");
+    delent("222");
+    delent("22");
+    delent("3");
+    delent("33333");
+    delent("333");
+    delent("33");
+    delent("4");
+    delent("44444");
+    delent("444");
+    delent("44");
+    delent("5");
+    delent("55555");
+    delent("555");
+    delent("55");
+    delent("6");
+    delent("66666");
+    delent("666");
+    delent("66");
+    delent("7");
+    delent("77777");
+    delent("777");
+    delent("77");
+    delent("8");
+    delent("88888");
+    delent("888");
+    delent("88");
+    delent("9");
+    delent("99999");
+    delent("999");
+    delent("99");
+    delent(":");
+    delent(":::::");
+    delent(":::");
+    delent("::");
+    delent(";");
+    delent(";;;;;");
+    delent(";;;");
+    delent(";;");
+    delent("<");
+    delent("<<<<<");
+    delent("<<<");
+    delent("<<");
+    delent("=");
+    delent("=====");
+    delent("===");
+    delent("==");
+    delent(">");
+    delent(">>>>>");
+    delent(">>>");
+    delent(">>");
+    delent("?");
+    delent("?????");
+    delent("???");
+    delent("??");
+    delent("@");
+    delent("@@@@@");
+    delent("@@@");
+    delent("@@");
     delent("A");
     delent("AAAAA");
     delent("AAA");
     delent("AA");
-    inorder_entity_tree_walk(entities_root);
-    puts("");
     delent("B");
     delent("BBBBB");
     delent("BBB");
@@ -924,8 +1224,6 @@ int main() {
     delent("HHHHH");
     delent("HHH");
     delent("HH");
-    inorder_entity_tree_walk(entities_root);
-    puts("");
     delent("I");
     delent("IIIII");
     delent("III");
@@ -980,9 +1278,163 @@ int main() {
     delent("UU");
     delent("V");
     delent("VVVVV");
+    delent("VVV");
+    delent("VV");
+    delent("W");
+    delent("WWWWW");
+    delent("WWW");
+    delent("WW");
+    delent("X");
+    delent("XXXXX");
+    delent("XXX");
+    delent("XX");
+    delent("Y");
+    delent("YYYYY");
+    delent("YYY");
+    delent("YY");
+    delent("Z");
+    delent("ZZZZZ");
+    delent("ZZZ");
+    delent("ZZ");
+    delent("[");
+    delent("[[[[[");
+    delent("[[[");
+    delent("[[");
+    delent("]");
+    delent("]]]]]");
+    delent("]]]");
+    delent("]]");
+    delent("^");
+    delent("^^^^^");
+    delent("^^^");
+    delent("^^");
+    delent("_");
+    delent("_____");
+    delent("___");
+    delent("__");
+    delent("`");
+    delent("`````");
+    delent("```");
+    delent("``");
+    delent("a");
+    delent("aaaaa");
+    delent("aaa");
+    delent("aa");
+    delent("b");
+    delent("bbbbb");
+    delent("bbb");
+    delent("bb");
+    delent("c");
+    delent("ccccc");
+    delent("ccc");
+    delent("cc");
+    delent("d");
+    delent("ddddd");
+    delent("ddd");
+    delent("dd");
+    delent("e");
+    delent("eeeee");
+    delent("eee");
+    delent("ee");
+    delent("f");
+    delent("fffff");
+    delent("fff");
+    delent("ff");
+    delent("g");
+    delent("ggggg");
+    delent("ggg");
+    delent("gg");
+    delent("h");
+    delent("hhhhh");
+    delent("hhh");
+    delent("hh");
+    delent("i");
+    delent("iiiii");
+    delent("iii");
+    delent("ii");
+    delent("j");
+    delent("jjjjj");
+    delent("jjj");
+    delent("jj");
+    delent("k");
+    delent("kkkkk");
+    delent("kkk");
+    delent("kk");
+    delent("l");
+    delent("lllll");
+    delent("lll");
+    delent("ll");
+    delent("m");
+    delent("mmmmm");
+    delent("mmm");
+    delent("mm");
+    delent("n");
+    delent("nnnnn");
+    delent("nnn");
+    delent("nn");
+    delent("o");
+    delent("ooooo");
+    delent("ooo");
+    delent("oo");
+    delent("p");
+    delent("ppppp");
+    delent("ppp");
+    delent("pp");
+    delent("q");
+    delent("qqqqq");
+    delent("qqq");
+    delent("qq");
+    delent("r");
+    delent("rrrrr");
+    delent("rrr");
+    delent("rr");
+    delent("s");
+    delent("sssss");
+    delent("sss");
+    delent("ss");
+    delent("t");
+    delent("ttttt");
+    delent("ttt");
+    delent("tt");
+    delent("u");
+    delent("uuuuu");
+    delent("uuu");
+    delent("uu");
+    delent("v");
+    delent("vvvvv");
+    delent("vvv");
+    delent("vv");
+    delent("w");
+    delent("wwwww");
+    delent("www");
+    delent("ww");
+    delent("x");
+    delent("xxxxx");
+    delent("xxx");
+    delent("xx");
+    delent("y");
     inorder_entity_tree_walk(entities_root);
     puts("");
-    delent("VVV");
+    delent("yyyyy");
+    delent("yyy");
+    delent("yy");
+    delent("z");
+    delent("zzzzz");
+    delent("zzz");
+    delent("zz");
+    delent("{");
+    delent("{{{{{");
+    delent("{{{");
+    delent("{{");
+    delent("|");
+    delent("|||||");
+    delent("|||");
+    delent("||");
+    delent("}");
+    delent("}}}}}");
+    delent("}}}");
+    delent("}}");
+
 
 
     return 0;
