@@ -56,9 +56,8 @@ char buffer[BUFFER_SIZE];
 // Un albero rosso-nero contenente tutte le entità
 struct Entity_node *entities_root;
 
-
 // Il nodo T_NIL_ENTITY per l'albero delle entità
-struct Entity_node T_NIL_ENTITY_NODE = {NULL, NULL, NULL, BLACK};
+struct Entity_node T_NIL_ENTITY_NODE;
 // Il puntatore a T_NIL_ENTITY
 struct Entity_node *T_NIL_ENTITY = &T_NIL_ENTITY_NODE;
 
@@ -78,6 +77,16 @@ struct Relation_node **CURRENT_ROOT;
 
 
 /* FUNZIONI PER LA GESTIONE DEGLI ALBERI */
+
+void inorder_entity_tree_walk(struct Entity_node *root) {
+
+    if (root != T_NIL_ENTITY) {
+        inorder_entity_tree_walk(root->left);
+        puts(root->key->name);
+        inorder_entity_tree_walk(root->right);
+    }
+
+}
 
 // Cerca un'entità nell'albero
 struct Entity_node *search_entity(char *name) {
@@ -149,13 +158,13 @@ struct Entity_node *entity_successor(struct Entity_node *x) {
         return x;
     }
     //se non c'è l'albero destro allora risalgo fino a trovare un figlio sinistro
-    struct Entity_node* curr;
-    curr = x->p;
-    while (curr != T_NIL_ENTITY && x == curr->right ) {
-        x = curr;
-        curr = x->p;
+    struct Entity_node* y;
+    y = x->p;
+    while (y != T_NIL_ENTITY && x == y->right ) {
+        x = y;
+        y = x->p;
     }
-    return curr;
+    return y;
 }
 
 // Funzine di supporto per delete
@@ -184,15 +193,15 @@ void entity_left_rotate(struct Entity_node *x) {
     y = x->right;
     //il sottoalbero sinistro di y diventa quello destro di x
     x->right = y->left;
-    if (y->left == T_NIL_ENTITY)
+    if (y->left != T_NIL_ENTITY)
         y->left->p = x;
     //attacca il padre di x a y
     y->p = x->p;
-    if (x->p == T_NIL_ENTITY)
+    if (x->p == T_NIL_ENTITY) {
         entities_root = y;
-    else if (x == x->p->left)
+    } else if (x == x->p->left) {
         x->p->left = y;
-    else x->p->right = y;
+    } else x->p->right = y;
     //mette x a sinistra di y
     y->left = x;
     x->p = y;
@@ -206,7 +215,7 @@ void entity_right_rotate(struct Entity_node *x) {
     y = x->left;
     //il sottoalbero destro di y diventa quello sinistro di x
     x->left = y->right;
-    if (y->right == T_NIL_ENTITY)
+    if (y->right != T_NIL_ENTITY)
         y->right->p = x;
     //attacca il padre di x a y
     y->p = x->p;
@@ -228,15 +237,15 @@ void relation_left_rotate(struct Relation_node **tree_root, struct Relation_node
     y = x->right;
     //il sottoalbero sinistro di y diventa quello destro di x
     x->right = y->left;
-    if (y->left == T_NIL_RELATION)
+    if (y->left != T_NIL_RELATION)
         y->left->p = x;
     //attacca il padre di x a y
     y->p = x->p;
-    if (x->p == T_NIL_RELATION)
+    if (x->p == T_NIL_RELATION) {
         *tree_root = y;
-    else if (x == x->p->left)
+    } else if (x == x->p->left) {
         x->p->left = y;
-    else x->p->right = y;
+    } else x->p->right = y;
     //mette x a sinistra di y
     y->left = x;
     x->p = y;
@@ -250,7 +259,7 @@ void relation_right_rotate(struct Relation_node **tree_root, struct Relation_nod
     y = x->left;
     //il sottoalbero destro di y diventa quello sinistro di x
     x->left = y->right;
-    if (y->right == T_NIL_RELATION)
+    if (y->right != T_NIL_RELATION)
         y->right->p = x;
     //attacca il padre di x a y
     y->p = x->p;
@@ -265,64 +274,55 @@ void relation_right_rotate(struct Relation_node **tree_root, struct Relation_nod
 }
 
 // Funzione di supporto all'inserimento
-void entity_insert_fixup(struct Entity_node *entity) {
+void entity_insert_fixup(struct Entity_node *z) {
 
     struct Entity_node *x, *y;
 
-    if (entity == entities_root)
-        entities_root->color = BLACK;
-    else {
-        x = entity->p;
-        if (x->color == RED) {
-            if (x == x->p->left) {
-                //x è figlio sinistro
-                y = x->p->right;
-                if (y->color == RED) {
-                    x->color = BLACK;
-                    y->color = BLACK;
-                    x->p->color =RED;
-                    entity_insert_fixup(x->p);
-                }
-                else {
-                    if (entity == x->right) {
-                        entity = x;
-                        entity_left_rotate(entity);
-                        x = entity->p;
-                    }
-                    x->color = BLACK;
-                    x->p->color = RED;
-                    entity_right_rotate(x->p);
-                }
+    while (z->p->color == RED) {
+        if (z->p == z->p->p->left) {
+            y = z->p->p->right;
+            if (y->color == RED) {
+                z->p->color = BLACK;
+                y->color = BLACK;
+                z->p->p->color = RED;
+                z = z->p->p;
             }
             else {
-                //x è figlio destro
-                y = x->p->left;
-                if (y->color == RED) {
-                    x->color = BLACK;
-                    y->color = BLACK;
-                    x->p->color =RED;
-                    entity_insert_fixup(x->p);
+                if (z == z->p->right) {
+                    z = z->p;
+                    entity_left_rotate(z);
                 }
-                else {
-                    if (entity == x->left) {
-                        entity = x;
-                        entity_right_rotate(entity);
-                        x = entity->p;
-                    }
-                    x->color = BLACK;
-                    x->p->color = RED;
-                    entity_left_rotate(x->p);
-                }
+                z->p->color = BLACK;
+                z->p->p->color = RED;
+                entity_right_rotate(z->p->p);
             }
-
+        }
+        else {
+            y = z->p->p->left;
+            if (y->color == RED) {
+                z->p->color = BLACK;
+                y->color = BLACK;
+                z->p->p->color = RED;
+                z = z->p->p;
+            }
+            else {
+                if (z == z->p->left) {
+                    z = z->p;
+                    entity_right_rotate(z);
+                }
+                z->p->color = BLACK;
+                z->p->p->color = RED;
+                entity_left_rotate(z->p->p);
+            }
         }
     }
-    //forse non necessario
+
     entities_root->color = BLACK;
+
 }
 
 // Inserimento di un'entità nell'albero, con verifica per evitare duplicati
-void entity_insert(char *name) {
+void entity_insert(char *name, struct Entity_node *root) {
 
     struct Entity_node *x, *y;
     y = T_NIL_ENTITY;
@@ -346,16 +346,18 @@ void entity_insert(char *name) {
     //costruisce il nodo con la chiave
     struct Entity_node *new = malloc(sizeof(struct Entity_node));
     new->key = entity;
-    new->right = T_NIL_ENTITY;
-    new->left = T_NIL_ENTITY;
     new->p = y;
+    //inserisce il nodo nell'albero
     if (y == T_NIL_ENTITY)
         entities_root = new;
     else if (strcmp(new->key->name, y->key->name) < 0)
         y->left = new;
     else y->right = new;
+    new->right = T_NIL_ENTITY;
+    new->left = T_NIL_ENTITY;
     new->color = RED;
     entity_insert_fixup(new);
+
 }
 
 // Funzione di supporto all'inserimento
@@ -524,10 +526,10 @@ void entity_delete_fixup (struct Entity_node *x) {
                 entity_right_rotate(w);
                 w = x->p->right;
             }
-        w->color = x->p->color;
-        x->p->color = BLACK;
-        w->right->color = BLACK;
-        entity_left_rotate(x->p);
+            w->color = x->p->color;
+            x->p->color = BLACK;
+            w->right->color = BLACK;
+            entity_left_rotate(x->p);
         }
     }
     else {
@@ -542,26 +544,25 @@ void entity_delete_fixup (struct Entity_node *x) {
             w->color = RED;
             entity_delete_fixup(x->p);
         }
-        else if (w->left->color == BLACK) {
+        else {
+            if (w->left->color == BLACK) {
             w->right->color = BLACK;
             w->color = RED;
             entity_left_rotate(w);
             w = x->p->left;
+            }
+            w->color = x->p->color;
+            x->p->color = BLACK;
+            w->left->color = BLACK;
+            entity_right_rotate(x->p);
         }
-        w->color = x->p->color;
-        x->p->color = BLACK;
-        w->left->color = BLACK;
-        entity_right_rotate(x->p);
     }
 }
 
 // Cancellazione di un'entità dall'albero
-void entity_node_delete (struct Entity_node *z) {
+void entity_node_delete (struct Entity_node *z, struct Entity_node *root) {
 
     struct Entity_node *x, *y;
-
-    if (z == NULL)
-        return;
 
     if (z->left == T_NIL_ENTITY || z->right == T_NIL_ENTITY)
         y = z;
@@ -577,10 +578,10 @@ void entity_node_delete (struct Entity_node *z) {
     else y->p->right = x;
     if (y != z)
         z->key = y->key;
-    if (y->color == BLACK && y != T_NIL_ENTITY)
+    if (y->color == BLACK)
         entity_delete_fixup(x);
 
-    entity_destroy(z);
+    //entity_destroy(z);
 }
 
 // Funzione di supporto alla cancellazione
@@ -602,16 +603,19 @@ void relation_delete_fixup (struct Relation_node **tree_root, struct Relation_no
             w->color = RED;
             relation_delete_fixup(tree_root, x->p);
         }
-        else if (w->right->color == BLACK) {
-            w->left->color = BLACK;
-            w->color = RED;
-            relation_right_rotate(tree_root, w);
-            w = x->p->right;
+        else {
+            if (w->right->color == BLACK) {
+                w->left->color = BLACK;
+                w->color = RED;
+                relation_right_rotate(tree_root, w);
+                w = x->p->right;
+            }
+            w->color = x->p->color;
+            x->p->color = BLACK;
+            w->right->color = BLACK;
+            relation_left_rotate(tree_root, x->p);
         }
-        w->color = x->p->color;
-        x->p->color = BLACK;
-        w->right->color = BLACK;
-        relation_left_rotate(tree_root, x->p);
+
     }
     else {
         w = x->p->left;
@@ -625,18 +629,19 @@ void relation_delete_fixup (struct Relation_node **tree_root, struct Relation_no
             w->color = RED;
             relation_delete_fixup(tree_root, x->p);
         }
-        else if (w->left->color == BLACK) {
-            w->right->color = BLACK;
-            w->color = RED;
-            relation_left_rotate(tree_root, w);
-            w = x->p->left;
+        else {
+            if (w->left->color == BLACK) {
+                w->right->color = BLACK;
+                w->color = RED;
+                relation_left_rotate(tree_root, w);
+                w = x->p->left;
+            }
+            w->color = x->p->color;
+            x->p->color = BLACK;
+            w->left->color = BLACK;
+            relation_right_rotate(tree_root, x->p);
         }
-        w->color = x->p->color;
-        x->p->color = BLACK;
-        w->left->color = BLACK;
-        relation_right_rotate(tree_root, x->p);
     }
-    // forse x->color = BLACK?
 }
 
 // Cancellazione di un'entità dall'albero e deallocazione del nodo
@@ -716,9 +721,8 @@ void outgoing_relations_delete (struct Entity_node *root) {
 //aggiunge un'entità identificata da "id_ent" all'insieme delle entità monitorate; se l'entità è già monitorata, non fa nulla
 void addent(char *name) {
 
-
     //inserisce l'entità nell'albero
-    entity_insert(name);
+    entity_insert(name, entities_root);
 }
 
 // Elimina l'entità identificata da "id_ent" dall'insieme delle entità monitorate;
@@ -730,9 +734,9 @@ void delent(char *name) {
     struct Entity_node *found = T_NIL_ENTITY;
     found = search_entity(name);
     if (found != T_NIL_ENTITY) {
-        entity_node_delete(found);
+        entity_node_delete(found, entities_root);
+        //outgoing_relations_delete(entities_root);
     }
-    outgoing_relations_delete(entities_root);
     FOUND = 0;
 }
 
@@ -752,6 +756,7 @@ void addrel(char *orig, char *dest, char *rel_name) {
     //TODO: Incrementare contatore
 
     FOUND = 0;
+
 }
 
 // Elimina la relazione identificata da "id_rel" tra le entità "id_orig" e "id_dest"
@@ -778,120 +783,206 @@ int main() {
 
     //inizializza albero
     entities_root = T_NIL_ENTITY;
+    T_NIL_ENTITY_NODE.key = NULL;
+    T_NIL_ENTITY_NODE.right = T_NIL_ENTITY;
+    T_NIL_ENTITY_NODE.left = T_NIL_ENTITY;
+    T_NIL_ENTITY_NODE.p = NULL;
+    T_NIL_ENTITY_NODE.color = BLACK;
+
+    T_NIL_RELATION_NODE.p = NULL;
+    T_NIL_RELATION_NODE.right = T_NIL_RELATION;
+    T_NIL_RELATION_NODE.left = T_NIL_RELATION;
+    T_NIL_RELATION_NODE.p = NULL;
+    T_NIL_RELATION_NODE.color = BLACK;
 
 
-    addent("0");
-    addent("1");
-    addent("2");
-    addent("3");
-    addent("4");
-    addent("5");
-    addent("6");
-    addent("7");
-    addent("8");
-    addent("9");
-    addent("10");
-    addent("11");
-    addent("12");
-    addent("13");
-    addent("14");
-    addent("15");
-    addent("16");
-    addent("17");
-    addent("18");
-    addent("19");
-    addent("20");
-    addent("21");
-    addent("22");
-    addent("23");
-    addent("24");
-    addent("25");
-    addent("26");
-    addent("27");
-    addent("28");
-    addent("29");
-    addent("30");
-    addent("31");
-    addent("32");
-    addent("33");
-    addent("34");
-    addent("35");
-    addent("36");
-    addent("37");
-    addent("38");
-    addent("39");
-    addent("40");
-    addent("41");
-    addent("42");
-    addent("43");
-    addent("44");
-    addent("45");
-    addent("46");
-    addent("47");
-    addent("48");
-    addent("49");
-    addent("50");
-    addent("51");
-    addent("52");
-    addent("53");
-    addent("54");
-    delent("0");
-    delent("1");
-    delent("2");
-    delent("3");
-    delent("4");
-    delent("5");
-    delent("6");
-    delent("7");
-    delent("8");
-    delent("9");
-    delent("10");
-    delent("11");
-    delent("12");
-    delent("13");
-    delent("14");
-    delent("15");
-    delent("16");
-    delent("17");
-    delent("18");
-    delent("19");
-    delent("20");
-    delent("21");
-    delent("22");
-    delent("23");
-    delent("24");
-    delent("25");
-    delent("26");
-    delent("27");
-    delent("28");
-    delent("29");
-    delent("30");
-    delent("31");
-    delent("32");
-    delent("33");
-    delent("34");
-    delent("35");
-    delent("36");
-    delent("37");
-    delent("38");
-    delent("39");
-    delent("40");
-    delent("41");
-    delent("42");
-    delent("43");
-    delent("44");
-    delent("45");
-    delent("46");
-    delent("47");
-    delent("48");
-    delent("49");
-    delent("50");
-    delent("51");
-    delent("52");
-    delent("53");
-    delent("54");
 
 
+    addent("A");
+    addent("AAAAA");
+    addent("AAA");
+    addent("AA");
+    addent("B");
+    addent("BBBBB");
+    addent("BBB");
+    addent("BB");
+    addent("C");
+    addent("CCCCC");
+    addent("CCC");
+    addent("CC");
+    addent("D");
+    addent("DDDDD");
+    addent("DDD");
+    addent("DD");
+    addent("E");
+    addent("EEEEE");
+    addent("EEE");
+    addent("EE");
+    addent("F");
+    addent("FFFFF");
+    addent("FFF");
+    addent("FF");
+    addent("G");
+    addent("GGGGG");
+    addent("GGG");
+    addent("GG");
+    addent("H");
+    addent("HHHHH");
+    addent("HHH");
+    addent("HH");
+    addent("I");
+    addent("IIIII");
+    addent("III");
+    addent("II");
+    addent("J");
+    addent("JJJJJ");
+    addent("JJJ");
+    addent("JJ");
+    addent("K");
+    addent("KKKKK");
+    addent("KKK");
+    addent("KK");
+    addent("L");
+    addent("LLLLL");
+    addent("LLL");
+    addent("LL");
+    addent("M");
+    addent("MMMMM");
+    addent("MMM");
+    addent("MM");
+    addent("N");
+    addent("NNNNN");
+    addent("NNN");
+    addent("NN");
+    addent("O");
+    addent("OOOOO");
+    addent("OOO");
+    addent("OO");
+    addent("P");
+    addent("PPPPP");
+    addent("PPP");
+    addent("PP");
+    addent("Q");
+    addent("QQQQQ");
+    addent("QQQ");
+    addent("QQ");
+    addent("R");
+    addent("RRRRR");
+    addent("RRR");
+    addent("RR");
+    addent("S");
+    addent("SSSSS");
+    addent("SSS");
+    addent("SS");
+    addent("T");
+    addent("TTTTT");
+    addent("TTT");
+    addent("TT");
+    addent("U");
+    addent("UUUUU");
+    addent("UUU");
+    addent("UU");
+    addent("V");
+    addent("VVVVV");
+    addent("VVV");
+
+    inorder_entity_tree_walk(entities_root);
+    puts("");
+
+
+    delent("A");
+    delent("AAAAA");
+    delent("AAA");
+    delent("AA");
+    inorder_entity_tree_walk(entities_root);
+    puts("");
+    delent("B");
+    delent("BBBBB");
+    delent("BBB");
+    delent("BB");
+    delent("C");
+    delent("CCCCC");
+    delent("CCC");
+    delent("CC");
+    delent("D");
+    delent("DDDDD");
+    delent("DDD");
+    delent("DD");
+    delent("E");
+    delent("EEEEE");
+    delent("EEE");
+    delent("EE");
+    delent("F");
+    delent("FFFFF");
+    delent("FFF");
+    delent("FF");
+    delent("G");
+    delent("GGGGG");
+    delent("GGG");
+    delent("GG");
+    delent("H");
+    delent("HHHHH");
+    delent("HHH");
+    delent("HH");
+    inorder_entity_tree_walk(entities_root);
+    puts("");
+    delent("I");
+    delent("IIIII");
+    delent("III");
+    delent("II");
+    delent("J");
+    delent("JJJJJ");
+    delent("JJJ");
+    delent("JJ");
+    delent("K");
+    delent("KKKKK");
+    delent("KKK");
+    delent("KK");
+    delent("L");
+    delent("LLLLL");
+    delent("LLL");
+    delent("LL");
+    delent("M");
+    delent("MMMMM");
+    delent("MMM");
+    delent("MM");
+    delent("N");
+    delent("NNNNN");
+    delent("NNN");
+    delent("NN");
+    delent("O");
+    delent("OOOOO");
+    delent("OOO");
+    delent("OO");
+    delent("P");
+    delent("PPPPP");
+    delent("PPP");
+    delent("PP");
+    delent("Q");
+    delent("QQQQQ");
+    delent("QQQ");
+    delent("QQ");
+    delent("R");
+    delent("RRRRR");
+    delent("RRR");
+    delent("RR");
+    delent("S");
+    delent("SSSSS");
+    delent("SSS");
+    delent("SS");
+    delent("T");
+    delent("TTTTT");
+    delent("TTT");
+    delent("TT");
+    delent("U");
+    delent("UUUUU");
+    delent("UUU");
+    delent("UU");
+    delent("V");
+    delent("VVVVV");
+    inorder_entity_tree_walk(entities_root);
+    puts("");
+    delent("VVV");
 
 
     return 0;
