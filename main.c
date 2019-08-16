@@ -89,7 +89,7 @@ void inorder_entity_tree_walk(struct Entity_node *root) {
 }
 
 // Cerca un'entità nell'albero
-struct Entity_node *search_entity(char *name) {
+struct Entity_node *entity_search(char *name) {
 
     if (entities_root == T_NIL_ENTITY)
         // albero vuoto
@@ -273,6 +273,18 @@ void relation_right_rotate(struct Relation_node **tree_root, struct Relation_nod
     x->p = y;
 }
 
+struct Entity_node *entity_create(char *name) {
+    //l'entità non era già presente, costruisce una nuova entità a partire dal nome
+    struct Entity *entity = malloc(sizeof(struct Entity));
+    entity->name = malloc(strlen(name) + 1);
+    strcpy(entity->name, name);
+    entity->relations = NULL;
+
+    //costruisce il nodo con la chiave
+    struct Entity_node *new = malloc(sizeof(struct Entity_node));
+    new->key = entity;
+}
+
 // Funzione di supporto all'inserimento
 void entity_insert_fixup(struct Entity_node *z) {
 
@@ -313,48 +325,30 @@ void entity_insert_fixup(struct Entity_node *z) {
             }
         }
     }
-
     entities_root->color = BLACK;
-
 }
 
 // Inserimento di un'entità nell'albero, con verifica per evitare duplicati
-void entity_insert(char *name, struct Entity_node *root) {
+void entity_insert(struct Entity_node *z) {
 
-    struct Entity_node *x, *y;
-    y = T_NIL_ENTITY;
-    x = entities_root;
-    //ricerca
+    struct Entity_node *y = T_NIL_ENTITY,
+                       *x = entities_root;
     while (x != T_NIL_ENTITY) {
         y = x;
-        if (strcmp(name, x->key->name) < 0)
+        if (strcmp(z->key->name, x->key->name) < 0)
             x = x->left;
-        else if (strcmp(name, x->key->name) == 0)
-            //esiste già
-            return;
         else x = x->right;
     }
-    //l'entità non era già presente, costruisce una nuova entità a partire dal nome
-    struct Entity *entity = malloc(sizeof(struct Entity));
-    entity->name = malloc(strlen(name) + 1);
-    strcpy(entity->name, name);
-    entity->relations = NULL;
-
-    //costruisce il nodo con la chiave
-    struct Entity_node *new = malloc(sizeof(struct Entity_node));
-    new->key = entity;
-    new->p = y;
-    //inserisce il nodo nell'albero
+    z->p = y;
     if (y == T_NIL_ENTITY)
-        entities_root = new;
-    else if (strcmp(new->key->name, y->key->name) < 0)
-        y->left = new;
-    else y->right = new;
-    new->right = T_NIL_ENTITY;
-    new->left = T_NIL_ENTITY;
-    new->color = RED;
-    entity_insert_fixup(new);
-
+        entities_root = z;
+    else if (strcmp(z->key->name, y->key->name) < 0)
+        y->left = z;
+    else y->right = z;
+    z->left = T_NIL_ENTITY;
+    z->right = T_NIL_ENTITY;
+    z->color = RED;
+    entity_insert_fixup(z);
 }
 
 // Funzione di supporto all'inserimento
@@ -714,8 +708,14 @@ void outgoing_relations_delete(struct Entity_node *root) {
 //aggiunge un'entità identificata da "id_ent" all'insieme delle entità monitorate; se l'entità è già monitorata, non fa nulla
 void addent(char *name) {
 
+    if (entity_search(name) != T_NIL_ENTITY)
+        //l'entità è già presente
+        return;
+
+    struct Entity_node *new;
+    new = entity_create(name);
     //inserisce l'entità nell'albero
-    entity_insert(name, entities_root);
+    entity_insert(new);
 }
 
 // Elimina l'entità identificata da "id_ent" dall'insieme delle entità monitorate;
@@ -725,7 +725,7 @@ void delent(char *name) {
     FOUND = 0;
     eliminating_entity_name = name;
     struct Entity_node *found = T_NIL_ENTITY;
-    found = search_entity(name);
+    found = entity_search(name);
     if (found != T_NIL_ENTITY) {
         entity_node_delete(found, entities_root);
         outgoing_relations_delete(entities_root);
@@ -739,9 +739,9 @@ void delent(char *name) {
 void addrel(char *orig, char *dest, char *rel_name) {
 
     FOUND = 0;
-    if (search_entity(orig) == T_NIL_ENTITY)
+    if (entity_search(orig) == T_NIL_ENTITY)
         return;
-    if (search_entity(dest) == T_NIL_ENTITY)
+    if (entity_search(dest) == T_NIL_ENTITY)
         return;
     //TODO: Implement this function
     //scorrere l'entità destinazione, trovare/creare il tipo di relazione giusto, chiamare
@@ -791,200 +791,258 @@ int main() {
     addent("-----");
     addent("---");
     addent("--");
-    addent(".");
-    addent(".....");
-    addent("...");
-    addent("..");
-
-    inorder_entity_tree_walk(entities_root);
-    puts("");
-
-
-    delent("-");
-    inorder_entity_tree_walk(entities_root);
-    puts("");
-    delent("-----");
-    delent("---");
-    delent("--");
-    delent(".");
-    delent(".....");
-    delent("...");
-    delent("..");
-    delent("/");
-    delent("/////");
-    delent("///");
-    delent("//");
-    delent("0");
-    delent("00000");
-    delent("000");
-    delent("00");
-    delent("1");
-    delent("11111");
-    delent("111");
-    delent("11");
-    delent("2");
-    delent("22222");
-    delent("222");
-    delent("22");
-    delent("3");
-    delent("33333");
-    delent("333");
-    delent("33");
-    delent("4");
-    delent("44444");
-    delent("444");
-    delent("44");
-    delent("5");
-    delent("55555");
-    delent("555");
-    delent("55");
-    delent("6");
-    delent("66666");
-    delent("666");
-    delent("66");
-    delent("7");
-    delent("77777");
-    delent("777");
-    delent("77");
-    delent("8");
-    delent("88888");
-    delent("888");
-    delent("88");
-    delent("9");
-    delent("99999");
-    delent("999");
-    delent("99");
-    delent(":");
-    delent(":::::");
-    delent(":::");
-    delent("::");
-    delent(";");
-    delent(";;;;;");
-    delent(";;;");
-    delent(";;");
-    delent("<");
-    delent("<<<<<");
-    delent("<<<");
-    delent("<<");
-    delent("=");
-    delent("=====");
-    delent("===");
-    delent("==");
-    delent(">");
-    delent(">>>>>");
-    delent(">>>");
-    delent(">>");
-    delent("?");
-    delent("?????");
-    delent("???");
-    delent("??");
-    delent("@");
-    delent("@@@@@");
-    delent("@@@");
-    delent("@@");
-    delent("A");
-    delent("AAAAA");
-    delent("AAA");
-    delent("AA");
-    delent("B");
-    delent("BBBBB");
-    delent("BBB");
-    delent("BB");
-    delent("C");
-    delent("CCCCC");
-    delent("CCC");
-    delent("CC");
-    delent("D");
-    delent("DDDDD");
-    delent("DDD");
-    delent("DD");
-    delent("E");
-    delent("EEEEE");
-    delent("EEE");
-    delent("EE");
-    delent("F");
-    delent("FFFFF");
-    delent("FFF");
-    delent("FF");
-    delent("G");
-    delent("GGGGG");
-    delent("GGG");
-    delent("GG");
-    delent("H");
-    delent("HHHHH");
-    delent("HHH");
-    delent("HH");
-    delent("I");
-    delent("IIIII");
-    delent("III");
-    delent("II");
-    delent("JJJJJ");
-    delent("JJJ");
-    delent("JJ");
-    delent("K");
-    delent("KKKKK");
-    delent("KKK");
-    delent("KK");
-    delent("L");
-    delent("LLLLL");
-    delent("LLL");
-    delent("LL");
-    delent("M");
-    delent("MMMMM");
-    delent("MMM");
-    delent("MM");
-    delent("N");
-    delent("NNNNN");
-    delent("NNN");
-    delent("NN");
-    delent("O");
-    delent("OOOOO");
-    delent("OOO");
-    delent("OO");
-    delent("P");
-    delent("PPPPP");
-    delent("PPP");
-    delent("PP");
-    delent("Q");
-    delent("QQQQQ");
-    delent("QQQ");
-    delent("QQ");
-    delent("R");
-    delent("RRRRR");
-    delent("RRR");
-    delent("RR");
-    delent("S");
-    delent("SSSSS");
-    delent("SSS");
-    delent("SS");
-    delent("T");
-    delent("TTTTT");
-    delent("TTT");
-    delent("TT");
-    delent("U");
-    delent("UUUUU");
-    delent("UUU");
-    delent("UU");
-    delent("V");
-    delent("VVVVV");
-    delent("VVV");
-    delent("VV");
-    delent("W");
-    delent("WWWWW");
-    delent("WWW");
-    delent("WW");
-    delent("X");
-    delent("XXXXX");
-    delent("XXX");
-    delent("XX");
-    delent("Y");
-    delent("YYYYY");
-    delent("YYY");
-    delent("YY");
-    delent("Z");
-    delent("ZZZZZ");
-    delent("ZZZ");
-    delent("ZZ");
+    addent("0");
+    addent("00000");
+    addent("000");
+    addent("00");
+    addent("1");
+    addent("11111");
+    addent("111");
+    addent("11");
+    addent("2");
+    addent("22222");
+    addent("222");
+    addent("22");
+    addent("3");
+    addent("33333");
+    addent("333");
+    addent("33");
+    addent("4");
+    addent("44444");
+    addent("444");
+    addent("44");
+    addent("5");
+    addent("55555");
+    addent("555");
+    addent("55");
+    addent("6");
+    addent("66666");
+    addent("666");
+    addent("66");
+    addent("7");
+    addent("77777");
+    addent("777");
+    addent("77");
+    addent("8");
+    addent("88888");
+    addent("888");
+    addent("88");
+    addent("9");
+    addent("99999");
+    addent("999");
+    addent("99");
+    addent("A");
+    addent("AAAAA");
+    addent("AAA");
+    addent("AA");
+    addent("B");
+    addent("BBBBB");
+    addent("BBB");
+    addent("BB");
+    addent("C");
+    addent("CCCCC");
+    addent("CCC");
+    addent("CC");
+    addent("D");
+    addent("DDDDD");
+    addent("DDD");
+    addent("DD");
+    addent("E");
+    addent("EEEEE");
+    addent("EEE");
+    addent("EE");
+    addent("F");
+    addent("FFFFF");
+    addent("FFF");
+    addent("FF");
+    addent("G");
+    addent("GGGGG");
+    addent("GGG");
+    addent("GG");
+    addent("H");
+    addent("HHHHH");
+    addent("HHH");
+    addent("HH");
+    addent("I");
+    addent("IIIII");
+    addent("III");
+    addent("II");
+    addent("J");
+    addent("JJJJJ");
+    addent("JJJ");
+    addent("JJ");
+    addent("K");
+    addent("KKKKK");
+    addent("KKK");
+    addent("KK");
+    addent("L");
+    addent("LLLLL");
+    addent("LLL");
+    addent("LL");
+    addent("M");
+    addent("MMMMM");
+    addent("MMM");
+    addent("MM");
+    addent("N");
+    addent("NNNNN");
+    addent("NNN");
+    addent("NN");
+    addent("O");
+    addent("OOOOO");
+    addent("OOO");
+    addent("OO");
+    addent("P");
+    addent("PPPPP");
+    addent("PPP");
+    addent("PP");
+    addent("Q");
+    addent("QQQQQ");
+    addent("QQQ");
+    addent("QQ");
+    addent("R");
+    addent("RRRRR");
+    addent("RRR");
+    addent("RR");
+    addent("S");
+    addent("SSSSS");
+    addent("SSS");
+    addent("SS");
+    addent("T");
+    addent("TTTTT");
+    addent("TTT");
+    addent("TT");
+    addent("U");
+    addent("UUUUU");
+    addent("UUU");
+    addent("UU");
+    addent("V");
+    addent("VVVVV");
+    addent("VVV");
+    addent("VV");
+    addent("W");
+    addent("WWWWW");
+    addent("WWW");
+    addent("WW");
+    addent("X");
+    addent("XXXXX");
+    addent("XXX");
+    addent("XX");
+    addent("Y");
+    addent("YYYYY");
+    addent("YYY");
+    addent("YY");
+    addent("Z");
+    addent("ZZZZZ");
+    addent("ZZZ");
+    addent("ZZ");
+    addent("_");
+    addent("_____");
+    addent("___");
+    addent("__");
+    addent("a");
+    addent("aaaaa");
+    addent("aaa");
+    addent("aa");
+    addent("b");
+    addent("bbbbb");
+    addent("bbb");
+    addent("bb");
+    addent("c");
+    addent("ccccc");
+    addent("ccc");
+    addent("cc");
+    addent("d");
+    addent("ddddd");
+    addent("ddd");
+    addent("dd");
+    addent("e");
+    addent("eeeee");
+    addent("eee");
+    addent("ee");
+    addent("f");
+    addent("fffff");
+    addent("fff");
+    addent("ff");
+    addent("g");
+    addent("ggggg");
+    addent("ggg");
+    addent("gg");
+    addent("h");
+    addent("hhhhh");
+    addent("hhh");
+    addent("hh");
+    addent("i");
+    addent("iiiii");
+    addent("iii");
+    addent("ii");
+    addent("j");
+    addent("jjjjj");
+    addent("jjj");
+    addent("jj");
+    addent("k");
+    addent("kkkkk");
+    addent("kkk");
+    addent("kk");
+    addent("l");
+    addent("lllll");
+    addent("lll");
+    addent("ll");
+    addent("m");
+    addent("mmmmm");
+    addent("mmm");
+    addent("mm");
+    addent("n");
+    addent("nnnnn");
+    addent("nnn");
+    addent("nn");
+    addent("o");
+    addent("ooooo");
+    addent("ooo");
+    addent("oo");
+    addent("p");
+    addent("ppppp");
+    addent("ppp");
+    addent("pp");
+    addent("q");
+    addent("qqqqq");
+    addent("qqq");
+    addent("qq");
+    addent("r");
+    addent("rrrrr");
+    addent("rrr");
+    addent("rr");
+    addent("s");
+    addent("sssss");
+    addent("sss");
+    addent("ss");
+    addent("t");
+    addent("ttttt");
+    addent("ttt");
+    addent("tt");
+    addent("u");
+    addent("uuuuu");
+    addent("uuu");
+    addent("uu");
+    addent("v");
+    addent("vvvvv");
+    addent("vvv");
+    addent("vv");
+    addent("w");
+    addent("wwwww");
+    addent("www");
+    addent("ww");
+    addent("x");
+    addent("xxxxx");
+    addent("xxx");
+    addent("xx");
+    addent("y");
+    addent("yyyyy");
+    addent("yyy");
+    addent("yy");
+    addent("z");
+    addent("zzzzz");
+    addent("zzz");
+    addent("zz");
 
     puts("end");
     inorder_entity_tree_walk(entities_root);
