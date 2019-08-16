@@ -283,6 +283,7 @@ struct Entity_node *entity_create(char *name) {
     //costruisce il nodo con la chiave
     struct Entity_node *new = malloc(sizeof(struct Entity_node));
     new->key = entity;
+    return new;
 }
 
 // Funzione di supporto all'inserimento
@@ -491,6 +492,16 @@ void relation_destroy(struct Relation_type *relation, struct Relation_type *prev
 }
 
 // Funzione di supporto alla cancellazione
+void entity_transplant(struct Entity_node *u, struct Entity_node *v) {
+    if (u->p == T_NIL_ENTITY)
+        entities_root = v;
+    else if (u == u->p->left)
+        u->p->left = v;
+    else u->p->right = v;
+    v->p = u->p;
+}
+
+// Funzione di supporto alla cancellazione
 void entity_delete_fixup(struct Entity_node *x) {
 
     struct Entity_node *w;
@@ -549,28 +560,41 @@ void entity_delete_fixup(struct Entity_node *x) {
     x->color = BLACK;
 }
 
-// Cancellazione di un'entità dall'albero
+// Cancellazione di un'entità dall'albero, da chiamare dopo aver verificato se l'entità è presente
 void entity_node_delete(struct Entity_node *z, struct Entity_node *root) {
 
+    bool y_orig_color;
     struct Entity_node *x, *y;
 
-    if (z->left == T_NIL_ENTITY || z->right == T_NIL_ENTITY)
-        y = z;
-    else y = entity_successor(z);
-    if (y->left != T_NIL_ENTITY)
-        x = y->left;
-    else x = y->right;
-    x->p = y->p;
-    if (y->p == T_NIL_ENTITY)
-        entities_root = x;
-    else {
-        if (y == y->p->left)
-            y->p->left = x;
-        else y->p->right = x;
+    y = z;
+    y_orig_color = y->color;
+    if (z->left == T_NIL_ENTITY) {
+        x = z->right;
+        entity_transplant(z, z->right);
     }
-    if (y != z)
-        z->key = y->key;
-    if (y->color == BLACK)
+    else if (z->right == T_NIL_ENTITY) {
+        x = z->left;
+        entity_transplant(z, z->left);
+    }
+    else {
+        y = z->right;
+        while (y->left != T_NIL_ENTITY)
+            y = y->left;
+        y_orig_color = y->color;
+        x = y->right;
+        if (y->p == z)
+            x->p = y;
+        else {
+            entity_transplant(y, y->right);
+            y->right = z->right;
+            y->right->p = y;
+        }
+        entity_transplant(z, y);
+        y->left = z->left;
+        y->left->p = y;
+        y->color = z->color;
+    }
+    if (y_orig_color == BLACK)
         entity_delete_fixup(x);
 }
 
@@ -728,6 +752,7 @@ void delent(char *name) {
     found = entity_search(name);
     if (found != T_NIL_ENTITY) {
         entity_node_delete(found, entities_root);
+        entity_destroy(found);
         outgoing_relations_delete(entities_root);
     }
     FOUND = 0;
@@ -1043,6 +1068,266 @@ int main() {
     addent("zzzzz");
     addent("zzz");
     addent("zz");
+
+    inorder_entity_tree_walk(entities_root);
+
+    delent("-");
+    delent("-----");
+    delent("---");
+    delent("--");
+    delent("0");
+    delent("00000");
+    delent("000");
+    delent("00");
+    delent("1");
+    delent("11111");
+    delent("111");
+    delent("11");
+    delent("2");
+    delent("22222");
+    delent("222");
+    delent("22");
+    delent("3");
+    delent("33333");
+    delent("333");
+    delent("33");
+    delent("4");
+    delent("44444");
+    delent("444");
+    delent("44");
+    delent("5");
+    delent("55555");
+    delent("555");
+    delent("55");
+    delent("6");
+    delent("66666");
+    delent("666");
+    delent("66");
+    delent("7");
+    delent("77777");
+    delent("777");
+    delent("77");
+    delent("8");
+    delent("88888");
+    delent("888");
+    delent("88");
+    delent("9");
+    delent("99999");
+    delent("999");
+    delent("99");
+    delent("A");
+    delent("AAAAA");
+    delent("AAA");
+    delent("AA");
+    delent("B");
+    delent("BBBBB");
+    delent("BBB");
+    delent("BB");
+    delent("C");
+    delent("CCCCC");
+    delent("CCC");
+    delent("CC");
+    delent("D");
+    delent("DDDDD");
+    delent("DDD");
+    delent("DD");
+    delent("E");
+    delent("EEEEE");
+    delent("EEE");
+    delent("EE");
+    delent("F");
+    delent("FFFFF");
+    delent("FFF");
+    delent("FF");
+    delent("G");
+    delent("GGGGG");
+    delent("GGG");
+    delent("GG");
+    delent("H");
+    delent("HHHHH");
+    delent("HHH");
+    delent("HH");
+    delent("I");
+    delent("IIIII");
+    delent("III");
+    delent("II");
+    delent("J");
+    delent("JJJJJ");
+    delent("JJJ");
+    delent("JJ");
+    delent("K");
+    delent("KKKKK");
+    delent("KKK");
+    delent("KK");
+    delent("L");
+    delent("LLLLL");
+    delent("LLL");
+    delent("LL");
+    delent("M");
+    delent("MMMMM");
+    delent("MMM");
+    delent("MM");
+    delent("N");
+    delent("NNNNN");
+    delent("NNN");
+    delent("NN");
+    delent("O");
+    delent("OOOOO");
+    delent("OOO");
+    delent("OO");
+    delent("P");
+    delent("PPPPP");
+    delent("PPP");
+    delent("PP");
+    delent("Q");
+    delent("QQQQQ");
+    delent("QQQ");
+    delent("QQ");
+    delent("R");
+    delent("RRRRR");
+    delent("RRR");
+    delent("RR");
+    delent("S");
+    delent("SSSSS");
+    delent("SSS");
+    delent("SS");
+    delent("T");
+    delent("TTTTT");
+    delent("TTT");
+    delent("TT");
+    delent("U");
+    delent("UUUUU");
+    delent("UUU");
+    delent("UU");
+    delent("V");
+    delent("VVVVV");
+    delent("VVV");
+    delent("VV");
+    delent("W");
+    delent("WWWWW");
+    delent("WWW");
+    delent("WW");
+    delent("X");
+    delent("XXXXX");
+    delent("XXX");
+    delent("XX");
+    delent("Y");
+    delent("YYYYY");
+    delent("YYY");
+    delent("YY");
+    delent("Z");
+    delent("ZZZZZ");
+    delent("ZZZ");
+    delent("ZZ");
+    delent("_");
+    delent("_____");
+    delent("___");
+    delent("__");
+    delent("a");
+    delent("aaaaa");
+    delent("aaa");
+    delent("aa");
+    delent("b");
+    delent("bbbbb");
+    delent("bbb");
+    delent("bb");
+    delent("c");
+    delent("ccccc");
+    delent("ccc");
+    delent("cc");
+    delent("d");
+    delent("ddddd");
+    delent("ddd");
+    delent("dd");
+    delent("e");
+    delent("eeeee");
+    delent("eee");
+    delent("ee");
+    delent("f");
+    delent("fffff");
+    delent("fff");
+    delent("ff");
+    delent("g");
+    delent("ggggg");
+    delent("ggg");
+    delent("gg");
+    delent("h");
+    delent("hhhhh");
+    delent("hhh");
+    delent("hh");
+    delent("i");
+    delent("iiiii");
+    delent("iii");
+    delent("ii");
+    delent("j");
+    delent("jjjjj");
+    delent("jjj");
+    delent("jj");
+    delent("k");
+    delent("kkkkk");
+    delent("kkk");
+    delent("kk");
+    delent("l");
+    delent("lllll");
+    delent("lll");
+    delent("ll");
+    delent("m");
+    delent("mmmmm");
+    delent("mmm");
+    delent("mm");
+    delent("n");
+    delent("nnnnn");
+    delent("nnn");
+    delent("nn");
+    delent("o");
+    delent("ooooo");
+    delent("ooo");
+    delent("oo");
+    delent("p");
+    delent("ppppp");
+    delent("ppp");
+    delent("pp");
+    delent("q");
+    delent("qqqqq");
+    delent("qqq");
+    delent("qq");
+    delent("r");
+    delent("rrrrr");
+    delent("rrr");
+    delent("rr");
+    delent("s");
+    delent("sssss");
+    delent("sss");
+    delent("ss");
+    delent("t");
+    delent("ttttt");
+    delent("ttt");
+    delent("tt");
+    delent("u");
+    delent("uuuuu");
+    delent("uuu");
+    delent("uu");
+    delent("v");
+    delent("vvvvv");
+    delent("vvv");
+    delent("vv");
+    delent("w");
+    delent("wwwww");
+    delent("www");
+    delent("ww");
+    delent("x");
+    delent("xxxxx");
+    delent("xxx");
+    delent("xx");
+    delent("y");
+    delent("yyyyy");
+    delent("yyy");
+    delent("yy");
+    delent("z");
+    delent("zzzzz");
+    delent("zzz");
+    delent("zz");
+
 
     puts("end");
     inorder_entity_tree_walk(entities_root);
