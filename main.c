@@ -812,7 +812,19 @@ int main() {
     T_NIL_RELATION_NODE.color = BLACK;
 
 
-    
+    FILE *fp = fopen("entities.txt", "w");
+
+    for (int i = 200; i < 30; i++) {
+        fprintf(fp, "addent(\"%c\");\n", i);
+    }
+
+    fprintf(fp, "inorder_entity_tree_walk(entities_root);");
+
+    for (int i = 30; i < 200; i++) {
+        fprintf(fp, "delent(\"%c\");\n", i);
+    }
+
+    fclose(fp);
 
 
     return 0;

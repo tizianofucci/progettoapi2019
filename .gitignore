@@ -10,3 +10,6 @@ suite/
 
 # Eseguibile
 main
+
+# Test privati
+generatore.txt
