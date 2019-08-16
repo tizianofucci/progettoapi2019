@@ -561,7 +561,7 @@ void entity_delete_fixup(struct Entity_node *x) {
 }
 
 // Cancellazione di un'entità dall'albero, da chiamare dopo aver verificato se l'entità è presente
-void entity_node_delete(struct Entity_node *z, struct Entity_node *root) {
+void entity_node_delete(struct Entity_node *z) {
 
     bool y_orig_color;
     struct Entity_node *x, *y;
@@ -751,7 +751,7 @@ void delent(char *name) {
     struct Entity_node *found = T_NIL_ENTITY;
     found = entity_search(name);
     if (found != T_NIL_ENTITY) {
-        entity_node_delete(found, entities_root);
+        entity_node_delete(found);
         entity_destroy(found);
         outgoing_relations_delete(entities_root);
     }

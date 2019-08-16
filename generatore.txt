@@ -1,0 +1,49 @@
+for (int i = 117; i > 44 && !(i > 90 && i < 93); i--) {
+        fprintf(fp, "addent(\"%c\");\n", i);
+        fprintf(fp, "addent(\"%c%c\");\n", i, i+1);
+        fprintf(fp, "addent(\"%c%c\");\n", i, i+2);
+        fprintf(fp, "addent(\"%c%c%c%c%c%c\");\n", i, i+1, i, i+2, i-1, i);
+        fprintf(fp, "addent(\"%c%c%c\");\n", i, i+2, i);
+        fprintf(fp, "addent(\"%c\");\n", i+1);
+        fprintf(fp, "addent(\"%c%c\");\n", i, i);
+        fprintf(fp, "addent(\"%c%c\");\n", i+2, i+2);
+        fprintf(fp, "addent(\"%c%c%c%c%c%c\");\n", i, i, i, i+2, i-1, i);
+        fprintf(fp, "addent(\"%c%c%c\");\n", i, i+1, i);
+        fprintf(fp, "addent(\"%c\");\n", i);
+        fprintf(fp, "addent(\"%c%c\");\n", i+2, i+1);
+        fprintf(fp, "addent(\"%c%c\");\n", i+1, i+2);
+        fprintf(fp, "addent(\"%c%c%c%c%c%c\");\n", i-1, i+1, i, i+2, i-1, i);
+        fprintf(fp, "addent(\"%c%c%c\");\n", i-1, i+2, i-1);
+        fprintf(fp, "addent(\"%c\");\n", i-2);
+        fprintf(fp, "addent(\"%c%c\");\n", i, i);
+        fprintf(fp, "addent(\"%c%c\");\n", i+1, i+2);
+        fprintf(fp, "addent(\"%c%c%c%c%c%c\");\n", i, i+1, i, i+2, i-1, i);
+        fprintf(fp, "addent(\"%c%c%c\");\n", i, i+1, i-1);
+    }
+
+    fprintf(fp, "\ninorder_entity_tree_walk(entities_root);\n");
+
+    for (int i = 117; i > 44 && !(i > 90 && i < 93); i--) {
+        fprintf(fp, "delent(\"%c\");\n", i);
+        fprintf(fp, "delent(\"%c%c\");\n", i, i+1);
+        fprintf(fp, "delent(\"%c%c\");\n", i, i+2);
+        fprintf(fp, "delent(\"%c%c%c%c%c%c\");\n", i, i+1, i, i+2, i-1, i);
+        fprintf(fp, "delent(\"%c%c%c\");\n", i, i+2, i);
+        fprintf(fp, "delent(\"%c\");\n", i+1);
+        fprintf(fp, "delent(\"%c%c\");\n", i, i);
+        fprintf(fp, "delent(\"%c%c\");\n", i+2, i+2);
+        fprintf(fp, "delent(\"%c%c%c%c%c%c\");\n", i, i, i, i+2, i-1, i);
+        fprintf(fp, "delent(\"%c%c%c\");\n", i, i+1, i);
+        fprintf(fp, "delent(\"%c\");\n", i);
+        fprintf(fp, "delent(\"%c%c\");\n", i+2, i+1);
+        fprintf(fp, "delent(\"%c%c\");\n", i+1, i+2);
+        fprintf(fp, "delent(\"%c%c%c%c%c%c\");\n", i-1, i+1, i, i+2, i-1, i);
+        fprintf(fp, "delent(\"%c%c%c\");\n", i-1, i+2, i-1);
+        fprintf(fp, "delent(\"%c\");\n", i-2);
+        fprintf(fp, "delent(\"%c%c\");\n", i, i);
+        fprintf(fp, "delent(\"%c%c\");\n", i+1, i+2);
+        fprintf(fp, "delent(\"%c%c%c%c%c%c\");\n", i, i+1, i, i+2, i-1, i);
+        fprintf(fp, "delent(\"%c%c%c\");\n", i, i+1, i-1);
+    }
+
+    fclose(fp);
