@@ -729,8 +729,6 @@ void delent(char *name) {
     if (found != T_NIL_ENTITY) {
         entity_node_delete(found, entities_root);
         outgoing_relations_delete(entities_root);
-        //c'è un bug qui dentro :)
-        //entity_destroy(found);
     }
     FOUND = 0;
 }
@@ -920,7 +918,6 @@ int main() {
     delent("IIIII");
     delent("III");
     delent("II");
-    delent("J");
     delent("JJJJJ");
     delent("JJJ");
     delent("JJ");
