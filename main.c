@@ -868,15 +868,15 @@ struct Relation_type *search_root(struct Entity_node *dest, char *name) {
     struct Relation_type *curr, *prev = NULL;
 
     curr = dest->key->relations;
-    if (curr == NULL) {
+    if (dest->key->relations == NULL) {
         //non c'erano relazioni
-        curr = malloc(sizeof(struct Relation_type));
-        curr->relation_name = malloc(strlen(name) + 1);
-        strcpy(curr->relation_name, name);
-        curr->relations_root = T_NIL_RELATION;
-        curr->next_relation = NULL;
-        curr->number = 0;
-        return curr;
+        dest->key->relations = malloc(sizeof(struct Relation_type));
+        dest->key->relations->relation_name = malloc(strlen(name) + 1);
+        strcpy(dest->key->relations->relation_name, name);
+        dest->key->relations->relations_root = T_NIL_RELATION;
+        dest->key->relations->next_relation = NULL;
+        dest->key->relations->number = 0;
+        return dest->key->relations;
     }
     else {
         //scorre la lista, che non è vuota
