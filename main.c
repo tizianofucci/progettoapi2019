@@ -6,15 +6,20 @@
 
 /* COSTANTI GLOBALI */
 
-// Capacità iniziale del vettore dinamico
-#define INITIAL_CAPACITY 10
-#define RELATION_NAME_LENGTH
-#define BUFFER_SIZE 50
+// Numero massimo di relazioni stimato
+#define MAX_RELATIONS_NUMBER 25
+// Lunghezza massima stimata del nome di una relazione
+#define RELATION_NAME_LENGTH 50
+// Lunghezza massima stimata del nome di un'entità
+#define ENTITY_NAME_LENGTH 50
+// Dimensione del buffer di lettura
+#define BUFFER_SIZE 200
 
 
 // Costanti per gli alberi rosso-neri
 #define RED true
 #define BLACK false
+
 
 /* STRUTTURE */
 
@@ -47,13 +52,28 @@ struct Relation_node {
     bool color;
 };
 
+// La rappresentazione di un'entità attraverso il suo nome, utilizzata nel record delle relazioni
+struct Entity_name {
+    char name[ENTITY_NAME_LENGTH];
+    struct Entity_name *next;
+};
+
+// La rappresentazione di una relazione monitorata, utilizzata per velocizzare la report
+struct Relation_record {
+    struct Entity_name *most_populars;
+    char relation_name[RELATION_NAME_LENGTH];
+    unsigned int relations;
+    struct Relation_record *next;
+};
 
 /* VARIABILI GLOBALI */
+// Radice della lista dei record utilizzati per velocizzare la report
+struct Relation_record *record_root = NULL;
 
 // Buffer per salvare temporaneamente stringhe
 char buffer[BUFFER_SIZE];
 
-// Un albero rosso-nero contenente tutte le entità
+// Radice dell'albero rosso-nero contenente tutte le entità
 struct Entity_node *entities_root;
 
 // Il nodo T_NIL_ENTITY per l'albero delle entità
@@ -405,8 +425,8 @@ void relation_insert_fixup(struct Relation_node *tree_root, struct Relation_node
     //forse tree_root->color = BLACK?
 }
 
-// Inserimento di una istanza relazione nell'albero, con verifica per evitare duplicati
-void relation_instance_insert(struct Relation_node **tree_root, char *name) {
+// Inserimento di una istanza di relazione nell'albero, con verifica per evitare duplicati
+unsigned relation_instance_insert(struct Relation_type *type, char *name) {
 
     //flag per verifica duplicati
     FOUND = 0;
@@ -420,7 +440,7 @@ void relation_instance_insert(struct Relation_node **tree_root, char *name) {
 
     struct Relation_node *x, *y;
     y = T_NIL_RELATION;
-    x = *tree_root;
+    x = type->relations_root;
     //ricerca
     while (x != T_NIL_RELATION) {
         y = x;
@@ -429,18 +449,21 @@ void relation_instance_insert(struct Relation_node **tree_root, char *name) {
         else if (strcmp(new->sender, x->sender) == 0) {
             //esiste già, non aumentare contatore
             FOUND = 1;
-            return;
+            return 0;
         } else x = x->right;
     }
     //l'entità non era già presente
     new->p = y;
     if (y == T_NIL_RELATION)
-        *tree_root = new;
+        type->relations_root = new;
     else if (strcmp(new->sender, y->sender) < 0)
         y->left = new;
     else y->right = new;
     new->color = RED;
-    relation_insert_fixup(*tree_root, new);
+    relation_insert_fixup(type->relations_root, new);
+    //incrementa contatore nell'entità
+    type->number++;
+    return type->number;
 }
 
 // Distrugge un intero albero di relazioni, ma non la radice
@@ -684,8 +707,73 @@ void counter_decrease(struct Relation_type *relation) {
     //TODO: Implement this function
 }
 
-void counter_increase(struct Relation_type *relation) {
-    //TODO: Implement this function
+void record_counter_increase(struct Relation_record *record, char *name, unsigned number) {
+    if (number < record->relations)
+        return;
+
+    if (number == record->relations) {
+        //si crea un ex aequo
+        struct Entity_name *curr, *prev = NULL;
+        curr = record->most_populars;
+        //inserimento in lista ordinata non vuota
+        while (curr->next != NULL && strcmp(curr->name, name) < 0) {
+            prev = curr;
+            curr = curr->next;
+        }
+
+        if (strcmp(curr->name, name) == 0) {
+            //trovata
+            return;
+        }
+        if (strcmp(curr->name, name) > 0) {
+            //non esisteva, inserimento in ordine
+            if (prev != NULL) {
+                prev->next = malloc(sizeof(struct Entity_name));
+                strcpy(prev->next->name, name);
+                prev->next->next = curr;
+                return;
+            }
+            else {
+                //esisteva un'unica relazione e la nuova va inserita prima
+                curr = malloc(sizeof(struct Relation_record));
+                strcpy(curr->name, name);
+                curr->next = record->most_populars;
+                record->most_populars = curr;
+                return;
+            }
+        }
+    }
+    if (record->most_populars == NULL) {
+        //il record era vuoto
+        record->most_populars = malloc(sizeof(struct Entity_name));
+        record->most_populars->next = NULL;
+        strcpy(record->most_populars->name, name);
+        record->relations = 1;
+        return;
+    }
+    if (strcmp(record->most_populars->name, name) == 0 && record->most_populars->next == NULL) {
+        //l'entità era l'unica con più relazioni di tutti
+        record->relations++;
+        return;
+    }
+    if (strcmp(record->most_populars->name, name) == 0 && record->most_populars->next != NULL) {
+        //c'era un ex aequo e adesso c'è un unico più popolare
+        struct Entity_name *curr, *prev;
+        //salva la lista
+        curr = record->most_populars;
+        record->most_populars = malloc(sizeof(struct Entity_name));
+        record->most_populars->next = NULL;
+        strcpy(record->most_populars->name, name);
+        record->relations++;
+        //libera la lista
+        while (curr->next != NULL) {
+            prev = curr;
+            curr = curr->next;
+            free(prev);
+        }
+        return;
+    }
+
 }
 
 // Rimuove le relazioni entranti da parte di una certa entità.
@@ -727,6 +815,105 @@ void outgoing_relations_delete(struct Entity_node *root) {
     }
 }
 
+struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH]) {
+
+    struct Relation_record *curr, *prev = NULL;
+
+    curr = record_root;
+    //scorre la lista
+    while (curr != NULL && curr->next != NULL && strcmp(curr->relation_name, rel_name) < 0) {
+        prev = curr;
+        curr = curr->next;
+    }
+    if (curr == NULL) {
+        //il record era vuoto
+        record_root = malloc(sizeof(struct Relation_record));
+        strcpy(record_root->relation_name, rel_name);
+        record_root->most_populars = NULL;
+        record_root->relations = 0;
+        record_root->next = NULL;
+        return record_root;
+    }
+    else {
+        //esisteva almeno una relazione nel record
+        if (strcmp(curr->relation_name, rel_name) == 0) {
+            //trovata, esisteva già
+            return curr;
+        }
+        if (strcmp(curr->relation_name, rel_name) > 0) {
+            //non esisteva, inserimento in ordine
+            if (prev != NULL) {
+                prev->next = malloc(sizeof(struct Relation_record));
+                strcpy(prev->next->relation_name, rel_name);
+                prev->next->most_populars = NULL;
+                prev->next->relations = 0;
+                prev->next->next = curr;
+                return prev->next;
+            }
+            else {
+                //esisteva un'unica relazione e la nuova va inserita prima
+                curr = malloc(sizeof(struct Relation_record));
+                strcpy(curr->relation_name, rel_name);
+                curr->most_populars = NULL;
+                curr->relations = 0;
+                curr->next = record_root;
+                record_root = curr;
+                return curr;
+            }
+        }
+    }
+}
+
+struct Relation_type *search_root(struct Entity_node *dest, char *name) {
+    struct Relation_type *curr, *prev = NULL;
+
+    curr = dest->key->relations;
+    if (curr == NULL) {
+        //non c'erano relazioni
+        curr = malloc(sizeof(struct Relation_type));
+        curr->relation_name = malloc(strlen(name) + 1);
+        strcpy(curr->relation_name, name);
+        curr->relations_root = T_NIL_RELATION;
+        curr->next_relation = NULL;
+        curr->number = 0;
+        return curr;
+    }
+    else {
+        //scorre la lista, che non è vuota
+        while (curr->next_relation != NULL && strcmp(curr->relation_name, name) < 0) {
+            prev = curr;
+            curr = curr->next_relation;
+        }
+
+        if (strcmp(curr->relation_name, name) == 0) {
+            //trovata
+            return curr;
+        }
+        if (strcmp(curr->relation_name, name) > 0) {
+            //non esisteva, inserimento in ordine
+            if (prev != NULL) {
+                prev->next_relation = malloc(sizeof(struct Relation_record));
+                prev->next_relation->relations_root = T_NIL_RELATION;
+                prev->next_relation->relation_name = malloc(strlen(name) + 1);
+                strcpy(prev->next_relation->relation_name, name);
+                prev->next_relation->next_relation = curr;
+                return prev->next_relation;
+            }
+            else {
+                //esisteva un'unica relazione e la nuova va inserita prima
+                curr = malloc(sizeof(struct Relation_record));
+                curr->relation_name = malloc(strlen(name) + 1);
+                strcpy(curr->relation_name, name);
+                curr->relations_root = T_NIL_RELATION;
+                curr->next_relation = dest->key->relations;
+                dest->key->relations = curr;
+                return curr;
+            }
+        }
+
+    }
+}
+
 /* FUNZIONI */
 
 //aggiunge un'entità identificata da "id_ent" all'insieme delle entità monitorate; se l'entità è già monitorata, non fa nulla
@@ -756,6 +943,8 @@ void delent(char *name) {
         outgoing_relations_delete(entities_root);
     }
     FOUND = 0;
+
+    //TODO: Ricreare per intero il record
 }
 
 // Aggiunge una relazione – identificata da "id_rel" – tra le entità "id_orig" e "id_dest", in cui "id_dest" è il
@@ -763,15 +952,32 @@ void delent(char *name) {
 // monitorata, non fa nulla.
 void addrel(char *orig, char *dest, char *rel_name) {
 
+    struct Entity_node *destination;
+    struct Relation_record *found;
+    unsigned new_number;
+
     FOUND = 0;
     if (entity_search(orig) == T_NIL_ENTITY)
+        //l'entità non è monitorata
         return;
-    if (entity_search(dest) == T_NIL_ENTITY)
+    destination = entity_search(dest);
+    if (destination == T_NIL_ENTITY)
         return;
-    //TODO: Implement this function
-    //scorrere l'entità destinazione, trovare/creare il tipo di relazione giusto, chiamare
-    //relation_instance_insert che si occuperà del flag, gestire il contatore
-    //TODO: Incrementare contatore
+
+    //inserisce la relazione nel record delle relazioni monitorate
+    found = add_relation_record(rel_name);
+
+    struct Relation_type *relationType;
+    //cerca l'albero della specifica relazione
+    relationType = search_root(destination, rel_name);
+
+    //inserisce la relazione entrante nell'entità destinazione
+    new_number = relation_instance_insert(relationType, orig);
+
+    if (FOUND == 0) {
+        //incrementa contatore nel record
+        record_counter_increase(found, dest, new_number);
+    }
 
     FOUND = 0;
 
@@ -782,6 +988,7 @@ void addrel(char *orig, char *dest, char *rel_name) {
 // se non c'è relazione "id_rel" tra "id_orig" e "id_dest" (con "id_dest" come ricevente), non fa nulla
 void delrel(char *orig, char *dest, char *rel_name) {
     //TODO: Implement this function
+    //distruggere il record
 }
 
 // Emette in output l’elenco delle relazioni, riportando per ciascuna le entità con il maggior numero di relazioni entranti
@@ -811,20 +1018,11 @@ int main() {
     T_NIL_RELATION_NODE.p = NULL;
     T_NIL_RELATION_NODE.color = BLACK;
 
-
-    FILE *fp = fopen("entities.txt", "w");
-
-    for (int i = 200; i < 30; i++) {
-        fprintf(fp, "addent(\"%c\");\n", i);
-    }
-
-    fprintf(fp, "inorder_entity_tree_walk(entities_root);");
-
-    for (int i = 30; i < 200; i++) {
-        fprintf(fp, "delent(\"%c\");\n", i);
-    }
-
-    fclose(fp);
+    addent("Luca");
+    addent("Marco");
+    addrel("Luca", "Marco", "amico_di");
+    delent("Luca");
+    delent("Marco");
 
 
     return 0;
