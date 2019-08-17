@@ -60,7 +60,7 @@ struct Entity_name {
 
 // La rappresentazione di una relazione monitorata, utilizzata per velocizzare la report
 struct Relation_record {
-    struct Entity_name *most_populars;
+    struct Entity_name *most_popular;
     char relation_name[RELATION_NAME_LENGTH];
     unsigned int relations;
     struct Relation_record *next;
@@ -714,7 +714,7 @@ void record_counter_increase(struct Relation_record *record, char *name, unsigne
     if (number == record->relations) {
         //si crea un ex aequo
         struct Entity_name *curr, *prev = NULL;
-        curr = record->most_populars;
+        curr = record->most_popular;
         //inserimento in lista ordinata non vuota
         while (curr->next != NULL && strcmp(curr->name, name) < 0) {
             prev = curr;
@@ -737,33 +737,33 @@ void record_counter_increase(struct Relation_record *record, char *name, unsigne
                 //esisteva un'unica relazione e la nuova va inserita prima
                 curr = malloc(sizeof(struct Relation_record));
                 strcpy(curr->name, name);
-                curr->next = record->most_populars;
-                record->most_populars = curr;
+                curr->next = record->most_popular;
+                record->most_popular = curr;
                 return;
             }
         }
     }
-    if (record->most_populars == NULL) {
+    if (record->most_popular == NULL) {
         //il record era vuoto
-        record->most_populars = malloc(sizeof(struct Entity_name));
-        record->most_populars->next = NULL;
-        strcpy(record->most_populars->name, name);
+        record->most_popular = malloc(sizeof(struct Entity_name));
+        record->most_popular->next = NULL;
+        strcpy(record->most_popular->name, name);
         record->relations = 1;
         return;
     }
-    if (strcmp(record->most_populars->name, name) == 0 && record->most_populars->next == NULL) {
+    if (strcmp(record->most_popular->name, name) == 0 && record->most_popular->next == NULL) {
         //l'entità era l'unica con più relazioni di tutti
         record->relations++;
         return;
     }
-    if (strcmp(record->most_populars->name, name) == 0 && record->most_populars->next != NULL) {
+    if (strcmp(record->most_popular->name, name) == 0 && record->most_popular->next != NULL) {
         //c'era un ex aequo e adesso c'è un unico più popolare
         struct Entity_name *curr, *prev;
         //salva la lista
-        curr = record->most_populars;
-        record->most_populars = malloc(sizeof(struct Entity_name));
-        record->most_populars->next = NULL;
-        strcpy(record->most_populars->name, name);
+        curr = record->most_popular;
+        record->most_popular = malloc(sizeof(struct Entity_name));
+        record->most_popular->next = NULL;
+        strcpy(record->most_popular->name, name);
         record->relations++;
         //libera la lista
         while (curr->next != NULL) {
@@ -829,7 +829,7 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
         //il record era vuoto
         record_root = malloc(sizeof(struct Relation_record));
         strcpy(record_root->relation_name, rel_name);
-        record_root->most_populars = NULL;
+        record_root->most_popular = NULL;
         record_root->relations = 0;
         record_root->next = NULL;
         return record_root;
@@ -840,12 +840,12 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
             //trovata, esisteva già
             return curr;
         }
-        if (strcmp(curr->relation_name, rel_name) > 0) {
+        else if (strcmp(curr->relation_name, rel_name) > 0) {
             //non esisteva, inserimento in ordine
             if (prev != NULL) {
                 prev->next = malloc(sizeof(struct Relation_record));
                 strcpy(prev->next->relation_name, rel_name);
-                prev->next->most_populars = NULL;
+                prev->next->most_popular = NULL;
                 prev->next->relations = 0;
                 prev->next->next = curr;
                 return prev->next;
@@ -854,13 +854,14 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
                 //esisteva un'unica relazione e la nuova va inserita prima
                 curr = malloc(sizeof(struct Relation_record));
                 strcpy(curr->relation_name, rel_name);
-                curr->most_populars = NULL;
+                curr->most_popular = NULL;
                 curr->relations = 0;
                 curr->next = record_root;
                 record_root = curr;
                 return curr;
             }
         }
+        return NULL;
     }
 }
 
@@ -912,6 +913,7 @@ struct Relation_type *search_root(struct Entity_node *dest, char *name) {
         }
 
     }
+    return NULL;
 }
 
 /* FUNZIONI */
@@ -1017,7 +1019,7 @@ void report() {
             putchar('"');
 
             //stampa il nome di tutte le entità
-            entity = curr->most_populars;
+            entity = curr->most_popular;
             while (entity != NULL) {
                 i = 0;
                 putchar(' ');
@@ -1062,12 +1064,17 @@ int main() {
     T_NIL_RELATION_NODE.p = NULL;
     T_NIL_RELATION_NODE.color = BLACK;
 
-    addent("Luca");
-    addent("Mario");
-    addrel("Luca", "Mario", "amico_di");
-    addrel("Luca", "Mario", "amica_di");
-    report();
-    report();
+
+    addent("Giovanni");
+    addent("Marco");
+    addent("Maria");
+
+
+    addrel("Giovanni", "Giovanni", "fidanzato_di");
+    addrel("Maria", "Giovanni", "amico_di");
+    addrel("Giovanni", "Marco", "amico_di");
+    addrel("Marco", "Marco", "amico_di");
+    addrel("Maria", "Marco", "amico_di");
     report();
 
     return 0;
