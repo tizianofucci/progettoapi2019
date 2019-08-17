@@ -993,7 +993,51 @@ void delrel(char *orig, char *dest, char *rel_name) {
 
 // Emette in output l’elenco delle relazioni, riportando per ciascuna le entità con il maggior numero di relazioni entranti
 void report() {
-    //TODO: Implement this function
+
+    if (record_root == NULL) {
+        //record vuoto, stampa none
+        putchar('n');
+        putchar('o');
+        putchar('n');
+        putchar('e');
+        putchar('\n');
+        return;
+    }
+    struct Relation_record *curr = record_root;
+    struct Entity_name *entity;
+    while (curr != NULL) {
+        if (curr->relations > 0) {
+            int i = 0;
+            //stampa il nome della relazione
+            putchar('"');
+            while (curr->relation_name[i] != '\0') {
+                putchar(curr->relation_name[i]);
+                i++;
+            }
+            putchar('"');
+
+            //stampa il nome di tutte le entità
+            entity = curr->most_populars;
+            while (entity != NULL) {
+                i = 0;
+                putchar(' ');
+                putchar('"');
+                while (entity->name[i] != '\0') {
+                    putchar(entity->name[i]);
+                    i++;
+                }
+                putchar('"');
+                entity = entity->next;
+            }
+            //stampa il numero di relazioni
+            printf(" %i", curr->relations);
+        }
+        putchar(';');
+        putchar(' ');
+        curr = curr->next;
+    }
+    //fine report
+    putchar('\n');
 }
 
 // Fine del cinema
@@ -1019,11 +1063,12 @@ int main() {
     T_NIL_RELATION_NODE.color = BLACK;
 
     addent("Luca");
-    addent("Marco");
-    addrel("Luca", "Marco", "amico_di");
-    delent("Luca");
-    delent("Marco");
-
+    addent("Mario");
+    addrel("Luca", "Mario", "amico_di");
+    addrel("Luca", "Mario", "amica_di");
+    report();
+    report();
+    report();
 
     return 0;
 }
