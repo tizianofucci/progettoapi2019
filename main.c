@@ -879,7 +879,6 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
 }
 
 //Data un'entità destinazione, trova o crea il tipo di relazione desiderato e lo restituisce
-//TODO: fix this bug
 struct Relation_type *search_root(struct Entity_node *dest, char *name) {
     struct Relation_type *curr, *prev = NULL;
 
@@ -894,49 +893,63 @@ struct Relation_type *search_root(struct Entity_node *dest, char *name) {
         dest->key->relations->number = 0;
         return dest->key->relations;
     }
-    else {
+    else if (dest->key->relations->next_relation == NULL) {
+
+        //un solo elemento in lista
+        if (strcmp(curr->relation_name, name) == 0) {
+            //trovata
+            return curr;
+        }
+        else if (strcmp(curr->relation_name, name) < 0) {
+            //inserisce prima
+            prev = dest->key->relations;
+            prev->next_relation = malloc(sizeof(struct Relation_type));
+            prev->next_relation->next_relation = curr;
+            prev->next_relation->relation_name = malloc(strlen(name) + 1);
+            strcpy(prev->next_relation->relation_name, name);
+            prev->next_relation->relations_root = T_NIL_RELATION;
+            prev->next_relation->number = 0;
+            return prev->next_relation;
+        } else {
+            //inserisce dopo
+            curr->next_relation = malloc(sizeof(struct Relation_type));
+            curr->next_relation->next_relation = NULL;
+            curr->next_relation->relations_root = T_NIL_RELATION;
+            curr->next_relation->number = 0;
+            curr->next_relation->relation_name = malloc(strlen(name) + 1);
+            strcpy(curr->next_relation->relation_name, name);
+            return curr->next_relation;
+        }
+    } else {
         //scorre la lista, che non è vuota
         while (curr->next_relation != NULL && strcmp(curr->relation_name, name) < 0) {
             prev = curr;
             curr = curr->next_relation;
         }
-
         if (strcmp(curr->relation_name, name) == 0) {
             //trovata
             return curr;
-        }
-        if (strcmp(curr->relation_name, name) > 0) {
-            //non esisteva, inserimento in ordine
-            if (prev != NULL) {
-                prev->next_relation = malloc(sizeof(struct Relation_record));
-                prev->next_relation->relations_root = T_NIL_RELATION;
-                prev->next_relation->relation_name = malloc(strlen(name) + 1);
-                strcpy(prev->next_relation->relation_name, name);
-                prev->next_relation->next_relation = curr;
-                return prev->next_relation;
-            }
-            else {
-                curr = malloc(sizeof(struct Relation_record));
-                curr->relation_name = malloc(strlen(name) + 1);
-                strcpy(curr->relation_name, name);
-                curr->relations_root = T_NIL_RELATION;
-                curr->next_relation = dest->key->relations;
-                dest->key->relations = curr;
-                return curr;
-            }
+        } else if (strcmp(curr->relation_name, name) < 0) {
+            //inserisce prima
+            prev = dest->key->relations;
+            prev->next_relation = malloc(sizeof(struct Relation_type));
+            prev->next_relation->next_relation = curr;
+            prev->next_relation->relation_name = malloc(strlen(name) + 1);
+            strcpy(prev->next_relation->relation_name, name);
+            prev->next_relation->relations_root = T_NIL_RELATION;
+            prev->next_relation->number = 0;
+            return prev->next_relation;
         } else {
-            //esisteva un'unica relazione e la nuova va inserita prima
-            curr = malloc(sizeof(struct Relation_record));
-            curr->relation_name = malloc(strlen(name) + 1);
-            strcpy(curr->relation_name, name);
-            curr->relations_root = T_NIL_RELATION;
-            curr->next_relation = dest->key->relations;
-            dest->key->relations = curr;
-            return curr;
+            //inserisce dopo
+            curr->next_relation = malloc(sizeof(struct Relation_type));
+            curr->next_relation->next_relation = NULL;
+            curr->next_relation->relations_root = T_NIL_RELATION;
+            curr->next_relation->number = 0;
+            curr->next_relation->relation_name = malloc(strlen(name) + 1);
+            strcpy(curr->next_relation->relation_name, name);
+            return curr->next_relation;
         }
-
     }
-    return NULL;
 }
 
 /* FUNZIONI */
