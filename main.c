@@ -69,11 +69,7 @@ struct Relation_record {
 };
 
 /* VARIABILI GLOBALI */
-// Buffer per la lettura da stdin
-char entity1[ENTITY_NAME_LENGTH], entity2[ENTITY_NAME_LENGTH];
-char relation[RELATION_NAME_LENGTH];
-char command[COMMAND_NAME_LENGTH];
-char ch;
+
 
 // Radice della lista dei record utilizzati per velocizzare la report
 struct Relation_record *record_root = NULL;
@@ -883,6 +879,7 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
 }
 
 //Data un'entità destinazione, trova o crea il tipo di relazione desiderato e lo restituisce
+//TODO: fix this bug
 struct Relation_type *search_root(struct Entity_node *dest, char *name) {
     struct Relation_type *curr, *prev = NULL;
 
@@ -919,7 +916,6 @@ struct Relation_type *search_root(struct Entity_node *dest, char *name) {
                 return prev->next_relation;
             }
             else {
-                //esisteva un'unica relazione e la nuova va inserita prima
                 curr = malloc(sizeof(struct Relation_record));
                 curr->relation_name = malloc(strlen(name) + 1);
                 strcpy(curr->relation_name, name);
@@ -928,6 +924,15 @@ struct Relation_type *search_root(struct Entity_node *dest, char *name) {
                 dest->key->relations = curr;
                 return curr;
             }
+        } else {
+            //esisteva un'unica relazione e la nuova va inserita prima
+            curr = malloc(sizeof(struct Relation_record));
+            curr->relation_name = malloc(strlen(name) + 1);
+            strcpy(curr->relation_name, name);
+            curr->relations_root = T_NIL_RELATION;
+            curr->next_relation = dest->key->relations;
+            dest->key->relations = curr;
+            return curr;
         }
 
     }
@@ -1080,11 +1085,23 @@ int main() {
     T_NIL_RELATION_NODE.p = NULL;
     T_NIL_RELATION_NODE.color = BLACK;
 
+    //per debug
+    // Buffer per la lettura da stdin
+    char entity1[ENTITY_NAME_LENGTH], entity2[ENTITY_NAME_LENGTH];
+    char relation[RELATION_NAME_LENGTH];
+    char ch;
+
+    char command[COMMAND_NAME_LENGTH];
+
+    FILE *fp = fopen("batch1.1.txt", "r");
+    if (!fp)
+        return 0;
+
     while (1) {
 
         // Scorre il file di input fino al primo comando
         do {
-            ch = getchar();
+            ch = getc(fp);
         } while (ch == ' ' || ch == '\n' || ch == '\0');
         // A questo punto ho trovato il primo carattere, inizio a scrivere il comando nel vettore
         int i = 0;
@@ -1092,7 +1109,7 @@ int main() {
             command[i] = ch;
             i++;
         }
-        while ((ch = getchar()) != '"' && ch != '\n');
+        while ((ch = getc(fp)) != '"' && ch != '\n' && ch != ' ');
         //fine del nome del comando
         command[i] = '\0';
 
@@ -1100,11 +1117,11 @@ int main() {
         if (strcmp(command, "addent") == 0) {
             //carica il nome dell'entità
             do {
-                ch = getchar();
+                ch = getc(fp);
             } while (ch != '"');
             //inizio del nome
             i = 0;
-            while ((ch = getchar()) != '"') {
+            while ((ch = getc(fp)) != '"') {
                 entity1[i] = ch;
                 i++;
             }
@@ -1120,11 +1137,11 @@ int main() {
         else if (strcmp(command, "addrel") == 0) {
             //carica il nome della prima entità
             do {
-                ch = getchar();
+                ch = getc(fp);
             } while (ch != '"');
             //inizio del nome
             i = 0;
-            while ((ch = getchar()) != '"') {
+            while ((ch = getc(fp)) != '"') {
                 entity1[i] = ch;
                 i++;
             }
@@ -1133,11 +1150,11 @@ int main() {
 
             //carica il nome della seconda entità
             do {
-                ch = getchar();
+                ch = getc(fp);
             } while (ch != '"');
             //inizio del nome
             i = 0;
-            while ((ch = getchar()) != '"') {
+            while ((ch = getc(fp)) != '"') {
                 entity2[i] = ch;
                 i++;
             }
@@ -1146,11 +1163,11 @@ int main() {
 
             //carica il nome della relazione
             do {
-                ch = getchar();
+                ch = getc(fp);
             } while (ch != '"');
             //inizio del nome
             i = 0;
-            while ((ch = getchar()) != '"') {
+            while ((ch = getc(fp)) != '"') {
                 relation[i] = ch;
                 i++;
             }
