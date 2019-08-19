@@ -13,3 +13,6 @@ main
 
 # Test privati
 generatore.txt
+
+# File batch
+*.in

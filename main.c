@@ -1085,13 +1085,14 @@ int main() {
         // Scorre il file di input fino al primo comando
         do {
             ch = getchar();
-        } while (ch != '"');
-        // A questo punto ho trovato il primo ", inizio a scrivere il comando nel vettore
+        } while (ch == ' ' || ch == '\n' || ch == '\0');
+        // A questo punto ho trovato il primo carattere, inizio a scrivere il comando nel vettore
         int i = 0;
-        while ((ch = getchar()) != '"') {
+        do {
             command[i] = ch;
             i++;
         }
+        while ((ch = getchar()) != '"' && ch != '\n');
         //fine del nome del comando
         command[i] = '\0';
 
