@@ -12,6 +12,8 @@
 #define RELATION_NAME_LENGTH 50
 // Lunghezza massima stimata del nome di un'entità
 #define ENTITY_NAME_LENGTH 50
+// Lunghezza del buffer per memorizzare il comando
+#define COMMAND_NAME_LENGTH 15
 // Dimensione del buffer di lettura
 #define BUFFER_SIZE 200
 
@@ -67,6 +69,12 @@ struct Relation_record {
 };
 
 /* VARIABILI GLOBALI */
+// Buffer per la lettura da stdin
+char entity1[ENTITY_NAME_LENGTH], entity2[ENTITY_NAME_LENGTH];
+char relation[RELATION_NAME_LENGTH];
+char command[COMMAND_NAME_LENGTH];
+char ch;
+
 // Radice della lista dei record utilizzati per velocizzare la report
 struct Relation_record *record_root = NULL;
 
@@ -1072,34 +1080,97 @@ int main() {
     T_NIL_RELATION_NODE.p = NULL;
     T_NIL_RELATION_NODE.color = BLACK;
 
+    while (1) {
 
-    addent("Giovanni");
-    addent("Marco");
-    addent("Maria");
+        // Scorre il file di input fino al primo comando
+        do {
+            ch = getchar();
+        } while (ch != '"');
+        // A questo punto ho trovato il primo ", inizio a scrivere il comando nel vettore
+        int i = 0;
+        while ((ch = getchar()) != '"') {
+            command[i] = ch;
+            i++;
+        }
+        //fine del nome del comando
+        command[i] = '\0';
 
+        // A questo punto il comando è salvato nel buffer
+        if (strcmp(command, "addent") == 0) {
+            //carica il nome dell'entità
+            do {
+                ch = getchar();
+            } while (ch != '"');
+            //inizio del nome
+            i = 0;
+            while ((ch = getchar()) != '"') {
+                entity1[i] = ch;
+                i++;
+            }
+            //fine del nome dell'entità
+            entity1[i] = '\0';
+            addent(entity1);
+        }
 
-    addrel("Giovanni", "Giovanni", "fidanzato_di");
-    report();
-    addrel("Maria", "Giovanni", "amico_di");
-    report();
-    addrel("Giovanni", "Marco", "amico_di");
-    report();
-    addrel("Marco", "Marco", "amico_di");
-    report();
-    addrel("Marco", "Marco", "amico_di");
-    report();
-    addrel("Maria", "Marco", "amico_di");
-    report();
-    addrel("Marco", "Marco", "amico_di");
-    report();
-    addrel("Marco", "Marco", "amico_di");
-    report();
+        else if (strcmp(command, "delent") == 0) {
+            // Da implementare
+            break;
+        }
+        else if (strcmp(command, "addrel") == 0) {
+            //carica il nome della prima entità
+            do {
+                ch = getchar();
+            } while (ch != '"');
+            //inizio del nome
+            i = 0;
+            while ((ch = getchar()) != '"') {
+                entity1[i] = ch;
+                i++;
+            }
+            //fine del nome della prima entità
+            entity1[i] = '\0';
 
+            //carica il nome della seconda entità
+            do {
+                ch = getchar();
+            } while (ch != '"');
+            //inizio del nome
+            i = 0;
+            while ((ch = getchar()) != '"') {
+                entity2[i] = ch;
+                i++;
+            }
+            //fine del nome della seconda entità
+            entity2[i] = '\0';
 
+            //carica il nome della relazione
+            do {
+                ch = getchar();
+            } while (ch != '"');
+            //inizio del nome
+            i = 0;
+            while ((ch = getchar()) != '"') {
+                relation[i] = ch;
+                i++;
+            }
+            //fine del nome della relazione
+            relation[i] = '\0';
 
-
-
-
+            addrel(entity1, entity2, relation);
+        }
+        else if (strcmp(command, "delrel") == 0) {
+            // Da implementare
+            puts("delrel");
+            break;
+        }
+        else if (strcmp(command, "report") == 0) {
+            report();
+        }
+        else
+            // "end" oppure comportamento indefinito
+            //eventualmente liberare la memoria
+            break;
+    }
 
     return 0;
 }
