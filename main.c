@@ -130,6 +130,28 @@ struct Entity_node *entity_search(char *name) {
     return T_NIL_ENTITY;
 }
 
+// Cerca un'entità origine dato un albero di relazioni (per addrel)
+struct Relation_node *relation_name_search(struct Relation_node *root, char *name) {
+
+    if (root == T_NIL_RELATION)
+        // albero vuoto
+        return T_NIL_RELATION;
+
+    struct Relation_node *current = root;
+
+    do {
+        if (strcmp(name, current->sender) == 0)
+            return current;
+        if (strcmp(name, current->sender) > 0)
+            current = current->right;
+        else current = current->left;
+
+    } while (current != T_NIL_RELATION);
+
+    // non trovata
+    return T_NIL_RELATION;
+}
+
 struct Relation_type *search_relation_type(struct Entity *entity, char name[RELATION_NAME_LENGTH]) {
     struct Relation_type *curr = entity->relations;
     while (curr != NULL && strcmp(curr->relation_name, name) != 0) {
@@ -373,97 +395,78 @@ void entity_insert(struct Entity_node *z) {
 }
 
 // Funzione di supporto all'inserimento
-void relation_insert_fixup(struct Relation_node *tree_root, struct Relation_node *relation) {
+//TODO: Fix the bug in here
+void relation_insert_fixup(struct Relation_type *type, struct Relation_node *z) {
 
-    struct Relation_node *x, *y;
+    struct Relation_node *y = T_NIL_RELATION;
 
-    if (relation == tree_root)
-        tree_root->color = BLACK;
-    else {
-        x = relation->p;
-        if (x->color == RED) {
-            if (x == x->p->left) {
-                //x è figlio sinistro
-                y = x->p->right;
-                if (y->color == RED) {
-                    x->color = BLACK;
-                    y->color = BLACK;
-                    x->p->color = RED;
-                    relation_insert_fixup(tree_root, x->p);
-                } else {
-                    if (relation == x->right) {
-                        relation = x;
-                        relation_left_rotate(&tree_root, relation);
-                        x = relation->p;
-                    }
-                    x->color = BLACK;
-                    x->p->color = RED;
-                    relation_right_rotate(&tree_root, x->p);
-                }
+    while (z->p->color == RED) {
+        if (z->p == z->p->p->left) {
+            y = z->p->p->right;
+            if (y->color == RED) {
+                z->p->color = BLACK;
+                y->color = BLACK;
+                z->p->p->color = RED;
+                z = z->p->p;
             } else {
-                //x è figlio destro
-                y = x->p->left;
-                if (y->color == RED) {
-                    x->color = BLACK;
-                    y->color = BLACK;
-                    x->p->color = RED;
-                    relation_insert_fixup(tree_root, x->p);
-                } else {
-                    if (relation == x->left) {
-                        relation = x;
-                        relation_right_rotate(&tree_root, relation);
-                        x = relation->p;
-                    }
-                    x->color = BLACK;
-                    x->p->color = RED;
-                    relation_left_rotate(&tree_root, x->p);
+                if (z == z->p->right) {
+                    z = z->p;
+                    relation_left_rotate(&type->relations_root, z);
                 }
+                z->p->color = BLACK;
+                z->p->p->color = RED;
+                relation_right_rotate(&type->relations_root, z->p->p);
             }
-
+        } else {
+            y = z->p->p->left;
+            if (y->color == RED) {
+                z->p->color = BLACK;
+                y->color = BLACK;
+                z->p->p->color = RED;
+                z = z->p->p;
+            } else {
+                if (z == z->p->left) {
+                    z = z->p;
+                    relation_right_rotate(&type->relations_root, z);
+                }
+                z->p->color = BLACK;
+                z->p->p->color = RED;
+                relation_left_rotate(&type->relations_root, z->p->p);
+            }
         }
     }
-    //forse tree_root->color = BLACK?
+    type->relations_root->color = BLACK;
 }
 
 // Inserimento di una istanza di relazione nell'albero, con verifica per evitare duplicati
-unsigned relation_instance_insert(struct Relation_type *type, char *name) {
+void relation_instance_insert(struct Relation_type *type, char *name) {
 
-    //flag per verifica duplicati
-    FOUND = 0;
+    struct Relation_node *y = T_NIL_RELATION, *x = type->relations_root;
+    struct Relation_node *z = malloc(sizeof(struct Entity_node));
+    z->right = T_NIL_RELATION;
+    z->left = T_NIL_RELATION;
+    z->sender = malloc(strlen(name) + 1);
+    strcpy(z->sender, name);
+    z->p = T_NIL_RELATION;
 
-    //costruisce il nodo con la chiave
-    struct Relation_node *new = malloc(sizeof(struct Relation_node));
-    new->sender = name;
-    new->right = T_NIL_RELATION;
-    new->left = T_NIL_RELATION;
-    new->p = T_NIL_RELATION;
 
-    struct Relation_node *x, *y;
-    y = T_NIL_RELATION;
-    x = type->relations_root;
-    //ricerca
     while (x != T_NIL_RELATION) {
         y = x;
-        if (strcmp(new->sender, x->sender) < 0)
+        if (strcmp(z->sender, x->sender) < 0)
             x = x->left;
-        else if (strcmp(new->sender, x->sender) == 0) {
-            //esiste già, non aumentare contatore
-            FOUND = 1;
-            return 0;
-        } else x = x->right;
+        else x = x->right;
     }
-    //l'entità non era già presente
-    new->p = y;
+    z->p = y;
     if (y == T_NIL_RELATION)
-        type->relations_root = new;
-    else if (strcmp(new->sender, y->sender) < 0)
-        y->left = new;
-    else y->right = new;
-    new->color = RED;
-    relation_insert_fixup(type->relations_root, new);
-    //incrementa contatore nell'entità
-    type->number++;
-    return type->number;
+        type->relations_root = z;
+    else if (strcmp(z->sender, y->sender) < 0)
+        y->left = z;
+    else y->right = z;
+    z->left = T_NIL_RELATION;
+    z->right = T_NIL_RELATION;
+    z->color = RED;
+    //bug qui
+    relation_insert_fixup(type, z);
 }
 
 // Distrugge un intero albero di relazioni, ma non la radice
@@ -965,7 +968,6 @@ void addrel(char *orig, char *dest, char *rel_name) {
 
     struct Entity_node *destination;
     struct Relation_record *found;
-    unsigned new_number;
 
     FOUND = 0;
     if (entity_search(orig) == T_NIL_ENTITY)
@@ -982,16 +984,15 @@ void addrel(char *orig, char *dest, char *rel_name) {
     //cerca l'albero della specifica relazione
     relationType = search_root(destination, rel_name);
 
-    //inserisce la relazione entrante nell'entità destinazione
-    new_number = relation_instance_insert(relationType, orig);
-
-    if (FOUND == 0) {
+    //inserisce la relazione entrante nell'entità destinazione, se non esiste già
+    if (relation_name_search(relationType->relations_root, orig) == T_NIL_RELATION) {
+        relation_instance_insert(relationType, orig);
+        //incrementa contatore nell'entità
+        relationType->number++;
         //incrementa contatore nel record
-        record_counter_increase(found, dest, new_number);
+        record_counter_increase(found, dest, relationType->number);
+
     }
-
-    FOUND = 0;
-
 }
 
 // Elimina la relazione identificata da "id_rel" tra le entità "id_orig" e "id_dest"
