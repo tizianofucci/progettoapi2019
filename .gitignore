@@ -12,7 +12,7 @@ suite/
 main
 
 # Test privati
-generatore.txt
+*.txt
 
 # File batch
 *.in
