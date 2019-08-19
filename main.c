@@ -395,7 +395,6 @@ void entity_insert(struct Entity_node *z) {
 }
 
 // Funzione di supporto all'inserimento
-//TODO: Fix the bug in here
 void relation_insert_fixup(struct Relation_type *type, struct Relation_node *z) {
 
     struct Relation_node *y = T_NIL_RELATION;
@@ -465,7 +464,6 @@ void relation_instance_insert(struct Relation_type *type, char *name) {
     z->left = T_NIL_RELATION;
     z->right = T_NIL_RELATION;
     z->color = RED;
-    //bug qui
     relation_insert_fixup(type, z);
 }
 
