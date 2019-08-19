@@ -1113,15 +1113,12 @@ int main() {
 
     char command[COMMAND_NAME_LENGTH];
 
-    FILE *fp = fopen("batch1.1.txt", "r");
-    if (!fp)
-        return 0;
 
     while (1) {
 
         // Scorre il file di input fino al primo comando
         do {
-            ch = getc(fp);
+            ch = getchar();
         } while (ch == ' ' || ch == '\n' || ch == '\0');
         // A questo punto ho trovato il primo carattere, inizio a scrivere il comando nel vettore
         int i = 0;
@@ -1129,7 +1126,7 @@ int main() {
             command[i] = ch;
             i++;
         }
-        while ((ch = getc(fp)) != '"' && ch != '\n' && ch != ' ');
+        while ((ch = getchar()) != '"' && ch != '\n' && ch != ' ');
         //fine del nome del comando
         command[i] = '\0';
 
@@ -1137,11 +1134,11 @@ int main() {
         if (strcmp(command, "addent") == 0) {
             //carica il nome dell'entità
             do {
-                ch = getc(fp);
+                ch = getchar();
             } while (ch != '"');
             //inizio del nome
             i = 0;
-            while ((ch = getc(fp)) != '"') {
+            while ((ch = getchar()) != '"') {
                 entity1[i] = ch;
                 i++;
             }
@@ -1157,11 +1154,11 @@ int main() {
         else if (strcmp(command, "addrel") == 0) {
             //carica il nome della prima entità
             do {
-                ch = getc(fp);
+                ch = getchar();
             } while (ch != '"');
             //inizio del nome
             i = 0;
-            while ((ch = getc(fp)) != '"') {
+            while ((ch = getchar()) != '"') {
                 entity1[i] = ch;
                 i++;
             }
@@ -1170,11 +1167,11 @@ int main() {
 
             //carica il nome della seconda entità
             do {
-                ch = getc(fp);
+                ch = getchar();
             } while (ch != '"');
             //inizio del nome
             i = 0;
-            while ((ch = getc(fp)) != '"') {
+            while ((ch = getchar()) != '"') {
                 entity2[i] = ch;
                 i++;
             }
@@ -1183,11 +1180,11 @@ int main() {
 
             //carica il nome della relazione
             do {
-                ch = getc(fp);
+                ch = getchar();
             } while (ch != '"');
             //inizio del nome
             i = 0;
-            while ((ch = getc(fp)) != '"') {
+            while ((ch = getchar()) != '"') {
                 relation[i] = ch;
                 i++;
             }
