@@ -109,7 +109,6 @@ void inorder_entity_tree_walk(struct Entity_node *root) {
         puts(root->key->name);
         inorder_entity_tree_walk(root->right);
     }
-
 }
 
 // Cerca un'entità nell'albero
@@ -683,7 +682,7 @@ void relation_delete_fixup(struct Relation_node **tree_root, struct Relation_nod
     }
 }
 
-// Cancellazione di un'entità dall'albero e deallocazione del nodo
+// Cancellazione di una relazione dall'albero e deallocazione del nodo
 void relation_delete(struct Relation_node **tree_root, struct Relation_node *z) {
 
     struct Relation_node *x, *y;
@@ -959,6 +958,109 @@ struct Relation_type *search_root(struct Entity_node *dest, char *name) {
     }
 }
 
+struct Relation_record *relation_record_search(char *rel_name) {
+
+    if (record_root == NULL)
+        return NULL;
+
+    struct Relation_record *curr = record_root;
+
+    if (curr->next == NULL) {
+        //una sola relazione nel record
+        if (strcmp(rel_name, curr->relation_name) == 0)
+            return curr;
+        else return NULL;
+    } else {
+        if (strcmp(rel_name, curr->relation_name) == 0)
+                return curr;
+        else do {
+            curr = curr->next;
+            if (strcmp(rel_name, curr->relation_name) == 0)
+                return curr;
+        } while (curr->next != NULL && strcmp(curr->relation_name, rel_name) < 0);
+        return NULL;
+    }
+}
+
+// In seguito a una delent distrugge il record e lo ricrea
+void record_destroy() {
+    struct Relation_record *curr, *prev;
+    struct Entity_name *c, *p;
+    curr = record_root;
+
+    if (curr == NULL)
+        //record vuoto
+        return;
+    else if (curr->next == NULL) {
+        //una sola relazione monitorata
+        c = curr->most_popular;
+        if (c->next == NULL) {
+            //una sola entità
+            free(c);
+        } else {
+            //scorre la lista
+            do {
+                p = c;
+                c = c->next;
+                free(p);
+            } while (c != NULL);
+        }
+        free(curr);
+        return;
+    } else {
+        //scorre la lista
+        do {
+            prev = curr;
+            curr = curr->next;
+            c = prev->most_popular;
+            if (c->next == NULL) {
+                //una sola entità
+                free(c);
+            } else {
+                //scorre la lista
+                do {
+                    p = c;
+                    c = c->next;
+                    free(p);
+                } while (c != NULL);
+            }
+            free(prev);
+        } while (curr != NULL);
+        return;
+    }
+}
+
+// Per ricostruire il record, percorre l'albero al contrario in modo da avere solo inserimenti in testa
+void reverse_entity_tree_walk(struct Entity_node *root) {
+
+    if (root != T_NIL_ENTITY) {
+        reverse_entity_tree_walk(root->right);
+
+        struct Relation_type *rel = root->key->relations;
+
+        //scorre tutte le relazioni nell'entità
+        if (rel == NULL)
+            return;
+        else {
+            do {
+                //inserisce la relazione nel record delle relazioni monitorate
+                struct Relation_record *found;
+                found = add_relation_record(rel->relation_name);
+                //incrementa contatore nel record
+                record_counter_increase(found, eliminating_entity_name, rel->number);
+                rel = rel->next_relation;
+            } while (rel != NULL);
+        }
+        reverse_entity_tree_walk(root->left);
+    }
+}
+
+// Ricrea da zero il record
+void record_create() {
+    //visita tutto l'albero delle entità
+    reverse_entity_tree_walk(entities_root);
+}
+
 /* FUNZIONI */
 
 //aggiunge un'entità identificata da "id_ent" all'insieme delle entità monitorate; se l'entità è già monitorata, non fa nulla
@@ -980,16 +1082,18 @@ void delent(char *name) {
 
     FOUND = 0;
     eliminating_entity_name = name;
-    struct Entity_node *found = T_NIL_ENTITY;
+    struct Entity_node *found;
     found = entity_search(name);
     if (found != T_NIL_ENTITY) {
         entity_node_delete(found);
         entity_destroy(found);
         outgoing_relations_delete(entities_root);
-    }
+    } else
+        return;
     FOUND = 0;
 
-    //TODO: Ricreare per intero il record
+    record_destroy();
+    record_create();
 }
 
 // Aggiunge una relazione – identificata da "id_rel" – tra le entità "id_orig" e "id_dest", in cui "id_dest" è il
@@ -1022,7 +1126,6 @@ void addrel(char *orig, char *dest, char *rel_name) {
         relationType->number++;
         //incrementa contatore nel record
         record_counter_increase(found, dest, relationType->number);
-
     }
 }
 
@@ -1030,8 +1133,24 @@ void addrel(char *orig, char *dest, char *rel_name) {
 // (laddove "id_dest" è il ricevente della relazione);
 // se non c'è relazione "id_rel" tra "id_orig" e "id_dest" (con "id_dest" come ricevente), non fa nulla
 void delrel(char *orig, char *dest, char *rel_name) {
-    //TODO: Implement this function
-    //distruggere il record
+
+    struct Relation_record *found;
+    struct Entity_node *destination;
+    found = relation_record_search(rel_name);
+
+    if (found == NULL)
+        //relazione non monitorata
+        return;
+
+    destination = entity_search(dest);
+    if (destination == T_NIL_ENTITY)
+        //entità non monitorata
+        return;
+    if (entity_search(orig) == T_NIL_ENTITY)
+        //entità non monitorata
+        return;
+
+
 }
 
 // Emette in output l’elenco delle relazioni, riportando per ciascuna le entità con il maggior numero di relazioni entranti
@@ -1148,7 +1267,19 @@ int main() {
         }
 
         else if (strcmp(command, "delent") == 0) {
-            // Da implementare
+            //carica il nome dell'entità
+            do {
+                ch = getchar();
+            } while (ch != '"');
+            //inizio del nome
+            i = 0;
+            while ((ch = getchar()) != '"') {
+                entity1[i] = ch;
+                i++;
+            }
+            //fine del nome dell'entità
+            entity1[i] = '\0';
+            delent(entity1);
             break;
         }
         else if (strcmp(command, "addrel") == 0) {
