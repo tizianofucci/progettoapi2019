@@ -70,6 +70,8 @@ struct Relation_record {
 
 /* VARIABILI GLOBALI */
 
+// Per la gestione di input/output
+FILE *fp1, *fp2;
 
 // Radice della lista dei record utilizzati per velocizzare la report
 struct Relation_record *record_root = NULL;
@@ -96,9 +98,11 @@ char *eliminating_entity_name;
 // Se un'istanza di relazione era presente nell'albero dove si è cercato
 bool FOUND;
 
-//
+// Variabile globale per evitare passaggi di parametri inutili in funzione ricorsiva
 struct Relation_node **CURRENT_ROOT;
 
+// Sto facendo debug?
+bool DEBUG;
 
 /* FUNZIONI PER LA GESTIONE DEGLI ALBERI */
 
@@ -157,6 +161,7 @@ struct Relation_node *relation_name_search(struct Relation_node *root, char *nam
 
 struct Relation_type *search_relation_type(struct Entity *entity, char name[RELATION_NAME_LENGTH]) {
     struct Relation_type *curr = entity->relations;
+    //TODO: Ottimizzare
     while (curr != NULL && strcmp(curr->relation_name, name) != 0) {
         curr = curr->next_relation;
     }
@@ -166,11 +171,10 @@ struct Relation_type *search_relation_type(struct Entity *entity, char name[RELA
 // Cerca un'istanza di relazione in un'entità (per delrel)
 struct Relation_node *search_relation(struct Entity *rel_dest, char *rel_name, char *rel_orig) {
 
-    if (rel_dest == NULL || rel_name == NULL || rel_orig == NULL)
-        return T_NIL_RELATION;
 
     struct Relation_type *curr_rel_type = rel_dest->relations;
     // cerca se esiste quel tipo di relazione
+    //TODO: Ottimizzare
     while (curr_rel_type != NULL && strcmp(curr_rel_type->relation_name, rel_name) != 0)
         curr_rel_type = curr_rel_type->next_relation;
     // se non trovato, ritorna NIL
@@ -493,6 +497,7 @@ void entity_destroy(struct Entity_node *x) {
             relation_tree_destroy(curr->relations_root);
             //dealloca la radice
             free(curr->relations_root);
+            free(curr);
             curr = next;
         }
         free(x->key->relations);
@@ -522,6 +527,16 @@ void relation_destroy(struct Relation_type *relation, struct Relation_type *prev
 void entity_transplant(struct Entity_node *u, struct Entity_node *v) {
     if (u->p == T_NIL_ENTITY)
         entities_root = v;
+    else if (u == u->p->left)
+        u->p->left = v;
+    else u->p->right = v;
+    v->p = u->p;
+}
+
+// Funzione di supporto alla cancellazione
+void relation_transplant(struct Relation_node **tree_root, struct Relation_node *u, struct Relation_node *v) {
+    if (u->p == T_NIL_RELATION)
+        *tree_root = v;
     else if (u == u->p->left)
         u->p->left = v;
     else u->p->right = v;
@@ -630,81 +645,96 @@ void relation_delete_fixup(struct Relation_node **tree_root, struct Relation_nod
 
     struct Relation_node *w;
 
-    if (x->color == RED || x->p == T_NIL_RELATION)
-        x->color = BLACK;
-    else if (x == x->p->left) {
-        w = x->p->right;
-        if (w->color == RED) {
-            w->color = BLACK;
-            x->p->color = RED;
-            relation_left_rotate(tree_root, x->p);
+    while (x != *tree_root && x->color == BLACK) {
+        if (x == x->p->left) {
             w = x->p->right;
-        }
-        if (w->left->color == BLACK && w->right->color == BLACK) {
-            w->color = RED;
-            relation_delete_fixup(tree_root, x->p);
-        } else {
-            if (w->right->color == BLACK) {
-                w->left->color = BLACK;
-                w->color = RED;
-                relation_right_rotate(tree_root, w);
+            if (w->color == RED) {
+                w->color = BLACK;
+                x->p->color = RED;
+                relation_left_rotate(tree_root, x->p);
                 w = x->p->right;
             }
-            w->color = x->p->color;
-            x->p->color = BLACK;
-            w->right->color = BLACK;
-            relation_left_rotate(tree_root, x->p);
-        }
-
-    } else {
-        w = x->p->left;
-        if (w->color == RED) {
-            w->color = BLACK;
-            x->p->color = RED;
-            relation_right_rotate(tree_root, x->p);
-            w = x->p->left;
-        }
-        if (w->right->color == BLACK && w->left->color == BLACK) {
-            w->color = RED;
-            relation_delete_fixup(tree_root, x->p);
-        } else {
-            if (w->left->color == BLACK) {
-                w->right->color = BLACK;
+            if (w->left->color == BLACK && w->right->color == BLACK) {
                 w->color = RED;
-                relation_left_rotate(tree_root, w);
+                x = x->p;
+            } else {
+                if (w->right->color == BLACK) {
+                    w->left->color = BLACK;
+                    w->color = BLACK;
+                    relation_right_rotate(tree_root, w);
+                    w = x->p->right;
+                }
+                w->color = x->p->color;
+                x->p->color = BLACK;
+                w->right->color = BLACK;
+                relation_left_rotate(tree_root, x->p);
+                x = *tree_root;
+            }
+        } else {
+            w = x->p->left;
+            if (w->color == RED) {
+                w->color = BLACK;
+                x->p->color = RED;
+                relation_right_rotate(tree_root, x->p);
                 w = x->p->left;
             }
-            w->color = x->p->color;
-            x->p->color = BLACK;
-            w->left->color = BLACK;
-            relation_right_rotate(tree_root, x->p);
+            if (w->right->color == BLACK && w->left->color == BLACK) {
+                w->color = RED;
+                x = x->p;
+            } else {
+                if (w->left->color == BLACK) {
+                    w->right->color = BLACK;
+                    w->color = BLACK;
+                    relation_left_rotate(tree_root, w);
+                    w = x->p->left;
+                }
+                w->color = x->p->color;
+                x->p->color = BLACK;
+                w->left->color = BLACK;
+                relation_right_rotate(tree_root, x->p);
+                x = *tree_root;
+            }
         }
     }
+    x->color = BLACK;
 }
 
 // Cancellazione di una relazione dall'albero e deallocazione del nodo
 void relation_delete(struct Relation_node **tree_root, struct Relation_node *z) {
 
+    bool y_orig_color;
     struct Relation_node *x, *y;
 
-    if (z->left == T_NIL_RELATION || z->right == T_NIL_RELATION)
-        y = z;
-    else y = relation_successor(z);
-    if (y->left != T_NIL_RELATION)
-        x = y->left;
-    else x = y->right;
-    x->p = y->p;
-    if (y->p == T_NIL_RELATION)
-        *tree_root = x;
-    else if (y == y->p->left)
-        y->p->left = x;
-    else y->p->right = x;
-    if (y != z)
-        z->sender = y->sender;
-    if (y->color == BLACK)
+    y = z;
+    y_orig_color = y->color;
+    if (z->left == T_NIL_RELATION) {
+        x = z->right;
+        relation_transplant(tree_root, z, z->right);
+    }
+    else if (z->right == T_NIL_RELATION) {
+        x = z->left;
+        relation_transplant(tree_root, z, z->left);
+    }
+    else {
+        y = z->right;
+        while (y->left != T_NIL_RELATION)
+            y = y->left;
+        y_orig_color = y->color;
+        x = y->right;
+        if (y->p == z)
+            x->p = y;
+        else {
+            relation_transplant(tree_root, y, y->right);
+            y->right = z->right;
+            y->right->p = y;
+        }
+        relation_transplant(tree_root, z, y);
+        y->left = z->left;
+        y->left->p = y;
+        y->color = z->color;
+    }
+    if (y_orig_color == BLACK)
         relation_delete_fixup(tree_root, x);
-
-    relation_instance_destroy(z);
 }
 
 void counter_decrease(struct Relation_type *relation) {
@@ -806,7 +836,6 @@ void outgoing_relations_delete(struct Entity_node *root) {
     if (curr != T_NIL_ENTITY) {
         //visita tutte le entità
         outgoing_relations_delete(curr->left);
-        outgoing_relations_delete(curr->right);
 
         //scorre i tipi di relazione nell'entità
         struct Relation_type *rel = curr->key->relations;
@@ -821,6 +850,8 @@ void outgoing_relations_delete(struct Entity_node *root) {
                 counter_decrease(rel);
             rel = rel->next_relation;
         }
+
+        outgoing_relations_delete(curr->right);
     }
 }
 
@@ -829,11 +860,7 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
     struct Relation_record *curr, *prev = NULL;
 
     curr = record_root;
-    //scorre la lista
-    while (curr != NULL && curr->next != NULL && strcmp(curr->relation_name, rel_name) < 0) {
-        prev = curr;
-        curr = curr->next;
-    }
+
     if (curr == NULL) {
         //il record era vuoto
         record_root = malloc(sizeof(struct Relation_record));
@@ -842,15 +869,42 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
         record_root->relations = 0;
         record_root->next = NULL;
         return record_root;
-    }
-    else {
-        //esisteva almeno una relazione nel record
+    } else if (curr->next == NULL) {
+        //esiste solo una relazione
+        if (strcmp(curr->relation_name, rel_name) == 0) {
+            //trovata, esisteva già
+            return curr;
+        } else if (strcmp(curr->relation_name, rel_name) < 0) {
+            //inserisce dopo
+            curr->next = malloc(sizeof(struct Relation_node));
+            strcpy(curr->next->relation_name, rel_name);
+            curr->next->relations = 0;
+            curr->next->most_popular = NULL;
+            curr->next->next = NULL;
+            return curr->next;
+        } else {
+            //inserisce prima
+            record_root = malloc(sizeof(struct Relation_record));
+            record_root->next = curr;
+            record_root->most_popular = NULL;
+            record_root->relations = 0;
+            strcpy(record_root->relation_name, rel_name);
+            return record_root;
+        }
+    } else {
+
+        //scorre la lista
+        while (curr->next != NULL && strcmp(curr->relation_name, rel_name) < 0) {
+            prev = curr;
+            curr = curr->next;
+        }
+
         if (strcmp(curr->relation_name, rel_name) == 0) {
             //trovata, esisteva già
             return curr;
         }
         else if (strcmp(curr->relation_name, rel_name) > 0) {
-            //non esisteva, inserimento in ordine
+            //inserisce prima
             if (prev != NULL) {
                 prev->next = malloc(sizeof(struct Relation_record));
                 strcpy(prev->next->relation_name, rel_name);
@@ -860,14 +914,13 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
                 return prev->next;
             }
             else {
-                //esisteva un'unica relazione e la nuova va inserita prima
-                curr = malloc(sizeof(struct Relation_record));
-                strcpy(curr->relation_name, rel_name);
-                curr->most_popular = NULL;
-                curr->relations = 0;
-                curr->next = record_root;
-                record_root = curr;
-                return curr;
+                //inserisce dopo
+                curr->next = malloc(sizeof(struct Relation_node));
+                strcpy(curr->next->relation_name, rel_name);
+                curr->next->relations = 0;
+                curr->next->most_popular = NULL;
+                curr->next->next = NULL;
+                return curr->next;
             }
         }
         return NULL;
@@ -1006,6 +1059,7 @@ void record_destroy() {
             } while (c != NULL);
         }
         free(curr);
+        record_root = NULL;
         return;
     } else {
         //scorre la lista
@@ -1026,6 +1080,7 @@ void record_destroy() {
             }
             free(prev);
         } while (curr != NULL);
+        record_root = NULL;
         return;
     }
 }
@@ -1047,7 +1102,7 @@ void reverse_entity_tree_walk(struct Entity_node *root) {
                 struct Relation_record *found;
                 found = add_relation_record(rel->relation_name);
                 //incrementa contatore nel record
-                record_counter_increase(found, eliminating_entity_name, rel->number);
+                record_counter_increase(found, root->key->name, rel->number);
                 rel = rel->next_relation;
             } while (rel != NULL);
         }
@@ -1085,9 +1140,9 @@ void delent(char *name) {
     struct Entity_node *found;
     found = entity_search(name);
     if (found != T_NIL_ENTITY) {
-        entity_node_delete(found);
-        entity_destroy(found);
         outgoing_relations_delete(entities_root);
+        entity_node_delete(found);
+        //entity_destroy(found);
     } else
         return;
     FOUND = 0;
@@ -1149,57 +1204,142 @@ void delrel(char *orig, char *dest, char *rel_name) {
     if (entity_search(orig) == T_NIL_ENTITY)
         //entità non monitorata
         return;
+    if (destination->key->relations == NULL)
+        //nessuna relazione
+        return;
 
+    struct Relation_type *rel_type, *prev;
+    rel_type = destination->key->relations;
+    prev = rel_type;
+    while (rel_type->next_relation != NULL && strcmp(rel_type->relation_name, rel_name) < 0) {
+        prev = rel_type;
+        rel_type = rel_type->next_relation;
+    }
+    if (strcmp(rel_type->relation_name, rel_name) != 0) {
+        //non trovata
+        return;
+    }
 
+    struct Relation_node *node;
+
+    //se l'istanza esiste, la elimina e decrementa il contatore
+    node = search_relation(destination->key, rel_name, orig);
+    if (node != T_NIL_RELATION) {
+        relation_delete(&rel_type->relations_root, node);
+        relation_instance_destroy(node);
+        rel_type->number --;
+        //se non ci sono altre istanze, elimina il tipo di relazione dall'entità
+        if (rel_type->relations_root == T_NIL_RELATION) {
+            prev->next_relation = rel_type->next_relation;
+            free(rel_type->relation_name);
+            relation_tree_destroy(rel_type->relations_root);
+            //free(rel_type->relations_root);
+            free(rel_type);
+        }
+    }
+
+    //TODO: Ottimizzare (molto)
+    record_destroy();
+    record_create();
 }
 
 // Emette in output l’elenco delle relazioni, riportando per ciascuna le entità con il maggior numero di relazioni entranti
 void report() {
 
-    if (record_root == NULL) {
-        //record vuoto, stampa none
-        putchar('n');
-        putchar('o');
-        putchar('n');
-        putchar('e');
-        putchar('\n');
-        return;
-    }
-    struct Relation_record *curr = record_root;
-    struct Entity_name *entity;
-    while (curr != NULL) {
-        if (curr->relations > 0) {
-            int i = 0;
-            //stampa il nome della relazione
-            putchar('"');
-            while (curr->relation_name[i] != '\0') {
-                putchar(curr->relation_name[i]);
-                i++;
-            }
-            putchar('"');
+    if (DEBUG) {
 
-            //stampa il nome di tutte le entità
-            entity = curr->most_popular;
-            while (entity != NULL) {
-                i = 0;
-                putchar(' ');
+        if (record_root == NULL) {
+            //record vuoto, stampa none
+            putc('n', fp2);
+            putc('o', fp2);
+            putc('n', fp2);
+            putc('e', fp2);
+            putc('\n', fp2);
+            return;
+        }
+        struct Relation_record *curr = record_root;
+        struct Entity_name *entity;
+        while (curr != NULL) {
+            if (curr->relations > 0) {
+                int i = 0;
+                //stampa il nome della relazione
+                putc('"', fp2);
+                while (curr->relation_name[i] != '\0') {
+                    putc(curr->relation_name[i], fp2);
+                    i++;
+                }
+                putc('"', fp2);
+
+                //stampa il nome di tutte le entità
+                entity = curr->most_popular;
+                while (entity != NULL) {
+                    i = 0;
+                    putc(' ', fp2);
+                    putc('"', fp2);
+                    while (entity->name[i] != '\0') {
+                        putc(entity->name[i], fp2);
+                        i++;
+                    }
+                    putc('"', fp2);
+                    entity = entity->next;
+                }
+                //stampa il numero di relazioni
+                fprintf(fp2, " %i", curr->relations);
+            }
+            putc(';', fp2);
+            putc(' ', fp2);
+            curr = curr->next;
+        }
+        //fine report
+        putc('\n', fp2);
+
+    } else {
+
+        if (record_root == NULL) {
+            //record vuoto, stampa none
+            putchar('n');
+            putchar('o');
+            putchar('n');
+            putchar('e');
+            putchar('\n');
+            return;
+        }
+        struct Relation_record *curr = record_root;
+        struct Entity_name *entity;
+        while (curr != NULL) {
+            if (curr->relations > 0) {
+                int i = 0;
+                //stampa il nome della relazione
                 putchar('"');
-                while (entity->name[i] != '\0') {
-                    putchar(entity->name[i]);
+                while (curr->relation_name[i] != '\0') {
+                    putchar(curr->relation_name[i]);
                     i++;
                 }
                 putchar('"');
-                entity = entity->next;
+
+                //stampa il nome di tutte le entità
+                entity = curr->most_popular;
+                while (entity != NULL) {
+                    i = 0;
+                    putchar(' ');
+                    putchar('"');
+                    while (entity->name[i] != '\0') {
+                        putchar(entity->name[i]);
+                        i++;
+                    }
+                    putchar('"');
+                    entity = entity->next;
+                }
+                //stampa il numero di relazioni
+                printf(" %i", curr->relations);
             }
-            //stampa il numero di relazioni
-            printf(" %i", curr->relations);
+            putchar(';');
+            putchar(' ');
+            curr = curr->next;
         }
-        putchar(';');
-        putchar(' ');
-        curr = curr->next;
+        //fine report
+        putchar('\n');
     }
-    //fine report
-    putchar('\n');
 }
 
 // Fine del cinema
@@ -1224,119 +1364,270 @@ int main() {
     T_NIL_RELATION_NODE.p = NULL;
     T_NIL_RELATION_NODE.color = BLACK;
 
-    //per debug
     // Buffer per la lettura da stdin
     char entity1[ENTITY_NAME_LENGTH], entity2[ENTITY_NAME_LENGTH];
     char relation[RELATION_NAME_LENGTH];
-    char ch;
+    char ch, command[COMMAND_NAME_LENGTH];
 
-    char command[COMMAND_NAME_LENGTH];
+    DEBUG = 0;
 
+    if (DEBUG) {
 
-    while (1) {
-
-        // Scorre il file di input fino al primo comando
-        do {
-            ch = getchar();
-        } while (ch == ' ' || ch == '\n' || ch == '\0');
-        // A questo punto ho trovato il primo carattere, inizio a scrivere il comando nel vettore
-        int i = 0;
-        do {
-            command[i] = ch;
-            i++;
+        if (!(fp1 = fopen("in.txt", "r"))) {
+            puts("Errore fp1");
+            return -1;
         }
-        while ((ch = getchar()) != '"' && ch != '\n' && ch != ' ');
-        //fine del nome del comando
-        command[i] = '\0';
+        if (!(fp2 = fopen("out.txt", "w"))) {
+            puts("Errore fp2");
+            return -1;
+        }
 
-        // A questo punto il comando è salvato nel buffer
-        if (strcmp(command, "addent") == 0) {
-            //carica il nome dell'entità
+        while (1) {
+
+            // Scorre il file di input fino al primo comando
             do {
-                ch = getchar();
-            } while (ch != '"');
-            //inizio del nome
-            i = 0;
-            while ((ch = getchar()) != '"') {
-                entity1[i] = ch;
+                ch = getc(fp1);
+            } while (ch == ' ' || ch == '\n' || ch == '\0');
+            // A questo punto ho trovato il primo carattere, inizio a scrivere il comando nel vettore
+            int i = 0;
+            do {
+                command[i] = ch;
                 i++;
             }
-            //fine del nome dell'entità
-            entity1[i] = '\0';
-            addent(entity1);
+            while ((ch = getc(fp1)) != '"' && ch != '\n' && ch != ' ');
+            //fine del nome del comando
+            command[i] = '\0';
+
+            // A questo punto il comando è salvato nel buffer
+            if (strcmp(command, "addent") == 0) {
+                //carica il nome dell'entità
+                do {
+                    ch = getc(fp1);
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getc(fp1)) != '"') {
+                    entity1[i] = ch;
+                    i++;
+                }
+                //fine del nome dell'entità
+                entity1[i] = '\0';
+                addent(entity1);
+            }
+
+            else if (strcmp(command, "delent") == 0) {
+                //carica il nome dell'entità
+                do {
+                    ch = getc(fp1);
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getc(fp1)) != '"') {
+                    entity1[i] = ch;
+                    i++;
+                }
+                //fine del nome dell'entità
+                entity1[i] = '\0';
+                delent(entity1);
+            }
+            else if (strcmp(command, "addrel") == 0) {
+                //carica il nome della prima entità
+                do {
+                    ch = getc(fp1);
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getc(fp1)) != '"') {
+                    entity1[i] = ch;
+                    i++;
+                }
+                //fine del nome della prima entità
+                entity1[i] = '\0';
+
+                //carica il nome della seconda entità
+                do {
+                    ch = getc(fp1);
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getc(fp1)) != '"') {
+                    entity2[i] = ch;
+                    i++;
+                }
+                //fine del nome della seconda entità
+                entity2[i] = '\0';
+
+                //carica il nome della relazione
+                do {
+                    ch = getc(fp1);
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getc(fp1)) != '"') {
+                    relation[i] = ch;
+                    i++;
+                }
+                //fine del nome della relazione
+                relation[i] = '\0';
+
+                addrel(entity1, entity2, relation);
+            }
+            else if (strcmp(command, "delrel") == 0) {
+                //carica il nome della prima entità
+                do {
+                    ch = getc(fp1);
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getc(fp1)) != '"') {
+                    entity1[i] = ch;
+                    i++;
+                }
+                //fine del nome della prima entità
+                entity1[i] = '\0';
+
+                //carica il nome della seconda entità
+                do {
+                    ch = getc(fp1);
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getc(fp1)) != '"') {
+                    entity2[i] = ch;
+                    i++;
+                }
+                //fine del nome della seconda entità
+                entity2[i] = '\0';
+
+                //carica il nome della relazione
+                do {
+                    ch = getc(fp1);
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getc(fp1)) != '"') {
+                    relation[i] = ch;
+                    i++;
+                }
+                //fine del nome della relazione
+                relation[i] = '\0';
+                delrel(entity1, entity2, relation);
+            }
+            else if (strcmp(command, "report") == 0) {
+                report();
+            }
+            else
+                // "end" oppure comportamento indefinito
+                //eventualmente liberare la memoria
+                break;
         }
 
-        else if (strcmp(command, "delent") == 0) {
-            //carica il nome dell'entità
-            do {
-                ch = getchar();
-            } while (ch != '"');
-            //inizio del nome
-            i = 0;
-            while ((ch = getchar()) != '"') {
-                entity1[i] = ch;
-                i++;
-            }
-            //fine del nome dell'entità
-            entity1[i] = '\0';
-            delent(entity1);
-            break;
-        }
-        else if (strcmp(command, "addrel") == 0) {
-            //carica il nome della prima entità
-            do {
-                ch = getchar();
-            } while (ch != '"');
-            //inizio del nome
-            i = 0;
-            while ((ch = getchar()) != '"') {
-                entity1[i] = ch;
-                i++;
-            }
-            //fine del nome della prima entità
-            entity1[i] = '\0';
+        fclose(fp1);
+        fclose(fp2);
 
-            //carica il nome della seconda entità
+    } else {
+        while (1) {
+
+            // Scorre il file di input fino al primo comando
             do {
                 ch = getchar();
-            } while (ch != '"');
-            //inizio del nome
-            i = 0;
-            while ((ch = getchar()) != '"') {
-                entity2[i] = ch;
-                i++;
-            }
-            //fine del nome della seconda entità
-            entity2[i] = '\0';
-
-            //carica il nome della relazione
+            } while (ch == ' ' || ch == '\n' || ch == '\0');
+            // A questo punto ho trovato il primo carattere, inizio a scrivere il comando nel vettore
+            int i = 0;
             do {
-                ch = getchar();
-            } while (ch != '"');
-            //inizio del nome
-            i = 0;
-            while ((ch = getchar()) != '"') {
-                relation[i] = ch;
+                command[i] = ch;
                 i++;
             }
-            //fine del nome della relazione
-            relation[i] = '\0';
+            while ((ch = getchar()) != '"' && ch != '\n' && ch != ' ');
+            //fine del nome del comando
+            command[i] = '\0';
 
-            addrel(entity1, entity2, relation);
+            // A questo punto il comando è salvato nel buffer
+            if (strcmp(command, "addent") == 0) {
+                //carica il nome dell'entità
+                do {
+                    ch = getchar();
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getchar()) != '"') {
+                    entity1[i] = ch;
+                    i++;
+                }
+                //fine del nome dell'entità
+                entity1[i] = '\0';
+                addent(entity1);
+            }
+
+            else if (strcmp(command, "delent") == 0) {
+                //carica il nome dell'entità
+                do {
+                    ch = getchar();
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getchar()) != '"') {
+                    entity1[i] = ch;
+                    i++;
+                }
+                //fine del nome dell'entità
+                entity1[i] = '\0';
+                delent(entity1);
+            }
+            else if (strcmp(command, "addrel") == 0) {
+                //carica il nome della prima entità
+                do {
+                    ch = getchar();
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getchar()) != '"') {
+                    entity1[i] = ch;
+                    i++;
+                }
+                //fine del nome della prima entità
+                entity1[i] = '\0';
+
+                //carica il nome della seconda entità
+                do {
+                    ch = getchar();
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getchar()) != '"') {
+                    entity2[i] = ch;
+                    i++;
+                }
+                //fine del nome della seconda entità
+                entity2[i] = '\0';
+
+                //carica il nome della relazione
+                do {
+                    ch = getchar();
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getchar()) != '"') {
+                    relation[i] = ch;
+                    i++;
+                }
+                //fine del nome della relazione
+                relation[i] = '\0';
+
+                addrel(entity1, entity2, relation);
+            }
+            else if (strcmp(command, "delrel") == 0) {
+                // Da implementare
+                delrel(entity1, entity2, relation);
+            }
+            else if (strcmp(command, "report") == 0) {
+                report();
+            }
+            else
+                // "end" oppure comportamento indefinito
+                //eventualmente liberare la memoria
+                break;
         }
-        else if (strcmp(command, "delrel") == 0) {
-            // Da implementare
-            puts("delrel");
-            break;
-        }
-        else if (strcmp(command, "report") == 0) {
-            report();
-        }
-        else
-            // "end" oppure comportamento indefinito
-            //eventualmente liberare la memoria
-            break;
     }
-
     return 0;
 }
