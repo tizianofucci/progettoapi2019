@@ -479,6 +479,8 @@ void relation_tree_destroy(struct Relation_node *root) {
     if (root != T_NIL_RELATION) {
         relation_tree_destroy(root->left);
         relation_tree_destroy(root->right);
+        root->left = T_NIL_RELATION;
+        root->right = T_NIL_RELATION;
         free(root->sender);
     }
 }
@@ -492,15 +494,16 @@ void entity_destroy(struct Entity_node *x) {
         //scorre tutti i tipi di relazione
         while (curr != NULL) {
             next = curr->next_relation;
-            free(curr->relation_name);
             //dealloca l'intero albero
             relation_tree_destroy(curr->relations_root);
             //dealloca la radice
-            free(curr->relations_root);
+            /*if (curr->relations_root != T_NIL_RELATION) {
+                free(curr->relations_root);
+            }*/
+            free(curr->relation_name);
             free(curr);
             curr = next;
         }
-        free(x->key->relations);
     }
     //dealloca il nodo
     free(x->key);
@@ -823,6 +826,7 @@ void search_relation_by_name(struct Relation_node *x) {
         search_relation_by_name(x->right);
         if (strcmp(x->sender, eliminating_entity_name) == 0) {
             relation_delete(CURRENT_ROOT, x);
+            relation_instance_destroy(x);
             FOUND = 1;
         }
     }
@@ -847,7 +851,7 @@ void outgoing_relations_delete(struct Entity_node *root) {
             search_relation_by_name(rel->relations_root);
             //c'era un'istanza e bisogna decrementare il contatore
             if (FOUND == 1)
-                counter_decrease(rel);
+                rel->number--;
             rel = rel->next_relation;
         }
 
@@ -1111,6 +1115,7 @@ void reverse_entity_tree_walk(struct Entity_node *root) {
 }
 
 // Ricrea da zero il record
+//TODO: Bug here
 void record_create() {
     //visita tutto l'albero delle entità
     reverse_entity_tree_walk(entities_root);
@@ -1142,7 +1147,7 @@ void delent(char *name) {
     if (found != T_NIL_ENTITY) {
         outgoing_relations_delete(entities_root);
         entity_node_delete(found);
-        //entity_destroy(found);
+        entity_destroy(found);
     } else
         return;
     FOUND = 0;
@@ -1211,9 +1216,12 @@ void delrel(char *orig, char *dest, char *rel_name) {
     struct Relation_type *rel_type, *prev;
     rel_type = destination->key->relations;
     prev = rel_type;
+    //contatore per gestire l'eliminazione dell'unica relazione
+    int n_rel = 0;
     while (rel_type->next_relation != NULL && strcmp(rel_type->relation_name, rel_name) < 0) {
         prev = rel_type;
         rel_type = rel_type->next_relation;
+        n_rel ++;
     }
     if (strcmp(rel_type->relation_name, rel_name) != 0) {
         //non trovata
@@ -1233,8 +1241,11 @@ void delrel(char *orig, char *dest, char *rel_name) {
             prev->next_relation = rel_type->next_relation;
             free(rel_type->relation_name);
             relation_tree_destroy(rel_type->relations_root);
-            //free(rel_type->relations_root);
             free(rel_type);
+        }
+        //se non ci sono altri tipi di relazione ricevuti dall'entità
+        if (n_rel == 0) {
+            destination->key->relations = NULL;
         }
     }
 
@@ -1369,7 +1380,7 @@ int main() {
     char relation[RELATION_NAME_LENGTH];
     char ch, command[COMMAND_NAME_LENGTH];
 
-    DEBUG = 0;
+    DEBUG = 1;
 
     if (DEBUG) {
 
@@ -1617,7 +1628,44 @@ int main() {
                 addrel(entity1, entity2, relation);
             }
             else if (strcmp(command, "delrel") == 0) {
-                // Da implementare
+                //carica il nome della prima entità
+                do {
+                    ch = getc(fp1);
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getc(fp1)) != '"') {
+                    entity1[i] = ch;
+                    i++;
+                }
+                //fine del nome della prima entità
+                entity1[i] = '\0';
+
+                //carica il nome della seconda entità
+                do {
+                    ch = getc(fp1);
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getc(fp1)) != '"') {
+                    entity2[i] = ch;
+                    i++;
+                }
+                //fine del nome della seconda entità
+                entity2[i] = '\0';
+
+                //carica il nome della relazione
+                do {
+                    ch = getc(fp1);
+                } while (ch != '"');
+                //inizio del nome
+                i = 0;
+                while ((ch = getc(fp1)) != '"') {
+                    relation[i] = ch;
+                    i++;
+                }
+                //fine del nome della relazione
+                relation[i] = '\0';
                 delrel(entity1, entity2, relation);
             }
             else if (strcmp(command, "report") == 0) {
