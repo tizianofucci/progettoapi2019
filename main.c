@@ -854,7 +854,6 @@ void outgoing_relations_delete(struct Entity_node *root) {
                 rel->number--;
             rel = rel->next_relation;
         }
-
         outgoing_relations_delete(curr->right);
     }
 }
@@ -896,38 +895,33 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
             return record_root;
         }
     } else {
-
         //scorre la lista
         while (curr->next != NULL && strcmp(curr->relation_name, rel_name) < 0) {
             prev = curr;
             curr = curr->next;
         }
-
         if (strcmp(curr->relation_name, rel_name) == 0) {
             //trovata, esisteva già
             return curr;
         }
         else if (strcmp(curr->relation_name, rel_name) > 0) {
             //inserisce prima
-            if (prev != NULL) {
-                prev->next = malloc(sizeof(struct Relation_record));
-                strcpy(prev->next->relation_name, rel_name);
-                prev->next->most_popular = NULL;
-                prev->next->relations = 0;
-                prev->next->next = curr;
-                return prev->next;
-            }
-            else {
-                //inserisce dopo
-                curr->next = malloc(sizeof(struct Relation_node));
-                strcpy(curr->next->relation_name, rel_name);
-                curr->next->relations = 0;
-                curr->next->most_popular = NULL;
-                curr->next->next = NULL;
-                return curr->next;
-            }
+            prev->next = malloc(sizeof(struct Relation_record));
+            strcpy(prev->next->relation_name, rel_name);
+            prev->next->most_popular = NULL;
+            prev->next->relations = 0;
+            prev->next->next = curr;
+            return prev->next;
         }
-        return NULL;
+        else {
+            //inserisce dopo
+            curr->next = malloc(sizeof(struct Relation_node));
+            strcpy(curr->next->relation_name, rel_name);
+            curr->next->relations = 0;
+            curr->next->most_popular = NULL;
+            curr->next->next = NULL;
+            return curr->next;
+        }
     }
 }
 
@@ -1098,18 +1092,20 @@ void reverse_entity_tree_walk(struct Entity_node *root) {
         struct Relation_type *rel = root->key->relations;
 
         //scorre tutte le relazioni nell'entità
-        if (rel == NULL)
-            return;
-        else {
+        if (rel != NULL) {
             do {
-                //inserisce la relazione nel record delle relazioni monitorate
-                struct Relation_record *found;
-                found = add_relation_record(rel->relation_name);
-                //incrementa contatore nel record
-                record_counter_increase(found, root->key->name, rel->number);
+                if (rel->number > 0) {
+                    //inserisce la relazione nel record delle relazioni monitorate
+                    struct Relation_record *found;
+                    found = add_relation_record(rel->relation_name);
+                    //incrementa contatore nel record
+                    record_counter_increase(found, root->key->name, rel->number);
+                }
+
                 rel = rel->next_relation;
             } while (rel != NULL);
         }
+
         reverse_entity_tree_walk(root->left);
     }
 }
@@ -1237,16 +1233,18 @@ void delrel(char *orig, char *dest, char *rel_name) {
         relation_instance_destroy(node);
         rel_type->number --;
         //se non ci sono altre istanze, elimina il tipo di relazione dall'entità
-        if (rel_type->relations_root == T_NIL_RELATION) {
+        if (rel_type->relations_root == T_NIL_RELATION || rel_type->number == 0) {
             prev->next_relation = rel_type->next_relation;
             free(rel_type->relation_name);
             relation_tree_destroy(rel_type->relations_root);
+            free(rel_type->relations_root);
             free(rel_type);
+            //se non ci sono altri tipi di relazione ricevuti dall'entità
+            if (n_rel == 0) {
+                destination->key->relations = NULL;
+            }
         }
-        //se non ci sono altri tipi di relazione ricevuti dall'entità
-        if (n_rel == 0) {
-            destination->key->relations = NULL;
-        }
+
     }
 
     //TODO: Ottimizzare (molto)
@@ -1318,6 +1316,7 @@ void report() {
         struct Relation_record *curr = record_root;
         struct Entity_name *entity;
         while (curr != NULL) {
+
             if (curr->relations > 0) {
                 int i = 0;
                 //stampa il nome della relazione
@@ -1355,7 +1354,7 @@ void report() {
 
 // Fine del cinema
 void end() {
-    //TODO: Implement this function
+    record_destroy();
 }
 
 
@@ -1380,7 +1379,7 @@ int main() {
     char relation[RELATION_NAME_LENGTH];
     char ch, command[COMMAND_NAME_LENGTH];
 
-    DEBUG = 1;
+    DEBUG = 0;
 
     if (DEBUG) {
 
@@ -1527,10 +1526,10 @@ int main() {
             else if (strcmp(command, "report") == 0) {
                 report();
             }
-            else
-                // "end" oppure comportamento indefinito
-                //eventualmente liberare la memoria
+            else {
+                record_destroy();
                 break;
+            }
         }
 
         fclose(fp1);
@@ -1630,11 +1629,11 @@ int main() {
             else if (strcmp(command, "delrel") == 0) {
                 //carica il nome della prima entità
                 do {
-                    ch = getc(fp1);
+                    ch = getchar();
                 } while (ch != '"');
                 //inizio del nome
                 i = 0;
-                while ((ch = getc(fp1)) != '"') {
+                while ((ch = getchar()) != '"') {
                     entity1[i] = ch;
                     i++;
                 }
@@ -1643,11 +1642,11 @@ int main() {
 
                 //carica il nome della seconda entità
                 do {
-                    ch = getc(fp1);
+                    ch = getchar();
                 } while (ch != '"');
                 //inizio del nome
                 i = 0;
-                while ((ch = getc(fp1)) != '"') {
+                while ((ch = getchar()) != '"') {
                     entity2[i] = ch;
                     i++;
                 }
@@ -1656,11 +1655,11 @@ int main() {
 
                 //carica il nome della relazione
                 do {
-                    ch = getc(fp1);
+                    ch = getchar();
                 } while (ch != '"');
                 //inizio del nome
                 i = 0;
-                while ((ch = getc(fp1)) != '"') {
+                while ((ch = getchar()) != '"') {
                     relation[i] = ch;
                     i++;
                 }
@@ -1671,10 +1670,11 @@ int main() {
             else if (strcmp(command, "report") == 0) {
                 report();
             }
-            else
-                // "end" oppure comportamento indefinito
-                //eventualmente liberare la memoria
+            else {
+                record_destroy();
                 break;
+            }
+
         }
     }
     return 0;

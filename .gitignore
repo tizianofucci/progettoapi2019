@@ -16,3 +16,6 @@ main
 
 # File batch
 *.in
+
+# File generati da Linux
+*.out
