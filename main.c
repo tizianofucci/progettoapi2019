@@ -168,35 +168,6 @@ struct Relation_type *search_relation_type(struct Entity *entity, char name[RELA
     return curr;
 }
 
-// Cerca un'istanza di relazione in un'entità (per delrel)
-struct Relation_node *search_relation(struct Entity *rel_dest, char *rel_name, char *rel_orig) {
-
-
-    struct Relation_type *curr_rel_type = rel_dest->relations;
-    // cerca se esiste quel tipo di relazione
-    //TODO: Ottimizzare
-    while (curr_rel_type != NULL && strcmp(curr_rel_type->relation_name, rel_name) != 0)
-        curr_rel_type = curr_rel_type->next_relation;
-    // se non trovato, ritorna NIL
-    if (curr_rel_type == NULL)
-        return T_NIL_RELATION;
-
-    // se quel tipo di relazione esiste, cerca la specifica istanza
-    struct Relation_node *curr_rel = curr_rel_type->relations_root;
-
-    // ricerca nell'albero
-    do {
-        if (strcmp(rel_orig, curr_rel->sender) == 0)
-            return curr_rel;
-        if (strcmp(rel_orig, curr_rel->sender) > 0)
-            curr_rel = curr_rel->right;
-        else curr_rel = curr_rel->left;
-
-    } while (curr_rel != T_NIL_RELATION);
-
-    // non trovata
-    return T_NIL_RELATION;
-}
 
 // Funzione di supporto per delete
 struct Entity_node *entity_successor(struct Entity_node *x) {
@@ -482,6 +453,7 @@ void relation_tree_destroy(struct Relation_node *root) {
         root->left = T_NIL_RELATION;
         root->right = T_NIL_RELATION;
         free(root->sender);
+        free(root);
     }
 }
 
@@ -703,7 +675,7 @@ void relation_delete_fixup(struct Relation_node **tree_root, struct Relation_nod
 }
 
 // Cancellazione di una relazione dall'albero e deallocazione del nodo
-void relation_delete(struct Relation_node **tree_root, struct Relation_node *z) {
+void relation_delete(struct Relation_node *tree_root, struct Relation_node *z) {
 
     bool y_orig_color;
     struct Relation_node *x, *y;
@@ -712,11 +684,11 @@ void relation_delete(struct Relation_node **tree_root, struct Relation_node *z) 
     y_orig_color = y->color;
     if (z->left == T_NIL_RELATION) {
         x = z->right;
-        relation_transplant(tree_root, z, z->right);
+        relation_transplant(&tree_root, z, z->right);
     }
     else if (z->right == T_NIL_RELATION) {
         x = z->left;
-        relation_transplant(tree_root, z, z->left);
+        relation_transplant(&tree_root, z, z->left);
     }
     else {
         y = z->right;
@@ -727,17 +699,17 @@ void relation_delete(struct Relation_node **tree_root, struct Relation_node *z) 
         if (y->p == z)
             x->p = y;
         else {
-            relation_transplant(tree_root, y, y->right);
+            relation_transplant(&tree_root, y, y->right);
             y->right = z->right;
             y->right->p = y;
         }
-        relation_transplant(tree_root, z, y);
+        relation_transplant(&tree_root, z, y);
         y->left = z->left;
         y->left->p = y;
         y->color = z->color;
     }
     if (y_orig_color == BLACK)
-        relation_delete_fixup(tree_root, x);
+        relation_delete_fixup(&tree_root, x);
 }
 
 void counter_decrease(struct Relation_type *relation) {
@@ -1189,68 +1161,59 @@ void addrel(char *orig, char *dest, char *rel_name) {
 // (laddove "id_dest" è il ricevente della relazione);
 // se non c'è relazione "id_rel" tra "id_orig" e "id_dest" (con "id_dest" come ricevente), non fa nulla
 void delrel(char *orig, char *dest, char *rel_name) {
-
-    struct Relation_record *found;
     struct Entity_node *destination;
-    found = relation_record_search(rel_name);
 
-    if (found == NULL)
-        //relazione non monitorata
-        return;
-
-    destination = entity_search(dest);
+    //verifica se le entità sono monitorate
+    destination = entity_search(orig);
     if (destination == T_NIL_ENTITY)
-        //entità non monitorata
         return;
-    if (entity_search(orig) == T_NIL_ENTITY)
-        //entità non monitorata
-        return;
-    if (destination->key->relations == NULL)
-        //nessuna relazione
+    destination = entity_search(orig);
+    if (destination == T_NIL_ENTITY)
         return;
 
-    struct Relation_type *rel_type, *prev;
-    rel_type = destination->key->relations;
-    prev = rel_type;
-    //contatore per gestire l'eliminazione dell'unica relazione
-    int n_rel = 0;
-    while (rel_type->next_relation != NULL && strcmp(rel_type->relation_name, rel_name) < 0) {
-        prev = rel_type;
-        rel_type = rel_type->next_relation;
-        n_rel ++;
+    //verifica se la relazione è monitorata
+    struct Relation_record *rel = record_root;
+    //TODO: Ottimizzare
+    while (rel != NULL && strcmp(rel_name, rel->relation_name) != 0) {
+        rel = rel->next;
     }
-    if (strcmp(rel_type->relation_name, rel_name) != 0) {
-        //non trovata
+    if (rel == NULL)
+        //relazione non presente
         return;
-    }
 
-    struct Relation_node *node;
+    //ricerca se l'istanza di relazione esiste nell'entità
+    struct Relation_node *relation;
+    struct Relation_type *curr_rel_type = destination->key->relations;
+    // cerca se esiste quel tipo di relazione
+    //TODO: Ottimizzare
+    while (curr_rel_type != NULL && strcmp(curr_rel_type->relation_name, rel_name) != 0)
+        curr_rel_type = curr_rel_type->next_relation;
+    // se non trovato
+    if (curr_rel_type == NULL)
+        return;
 
-    //se l'istanza esiste, la elimina e decrementa il contatore
-    node = search_relation(destination->key, rel_name, orig);
-    if (node != T_NIL_RELATION) {
-        relation_delete(&rel_type->relations_root, node);
-        relation_instance_destroy(node);
-        rel_type->number --;
-        //se non ci sono altre istanze, elimina il tipo di relazione dall'entità
-        if (rel_type->relations_root == T_NIL_RELATION || rel_type->number == 0) {
-            prev->next_relation = rel_type->next_relation;
-            free(rel_type->relation_name);
-            relation_tree_destroy(rel_type->relations_root);
-            free(rel_type->relations_root);
-            free(rel_type);
-            //se non ci sono altri tipi di relazione ricevuti dall'entità
-            if (n_rel == 0) {
-                destination->key->relations = NULL;
-            }
+    // se quel tipo di relazione esiste, cerca la specifica istanza
+    relation = curr_rel_type->relations_root;
+
+    // ricerca nell'albero
+
+    while (relation != T_NIL_RELATION) {
+        if (strcmp(orig, relation->sender) == 0) {
+            //trovata
+            relation_delete(curr_rel_type->relations_root, relation);
+            relation_instance_destroy(relation);
+            curr_rel_type->number --;
+            //TODO: Ottimizzare
+            record_destroy();
+            record_create();
         }
-
+        else if (strcmp(orig, relation->sender) > 0)
+            relation = relation->right;
+        else relation = relation->left;
     }
-
-    //TODO: Ottimizzare (molto)
-    record_destroy();
-    record_create();
 }
+
+
 
 // Emette in output l’elenco delle relazioni, riportando per ciascuna le entità con il maggior numero di relazioni entranti
 void report() {
