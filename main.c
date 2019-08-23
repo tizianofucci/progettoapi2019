@@ -792,7 +792,7 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
         return curr->next;
 
     } else {
-        while (curr->next != NULL) {
+        while (curr != NULL) {
             if (strcmp(curr->relation_name, rel_name) == 0)
                 //trovata
                 return curr;
@@ -1149,101 +1149,52 @@ void delrel(char *orig, char *dest, char *rel_name) {
 // Emette in output l’elenco delle relazioni, riportando per ciascuna le entità con il maggior numero di relazioni entranti
 void report() {
 
-    if (DEBUG) {
+    if (record_root == NULL) {
+        //record vuoto, stampa none
+        putchar('n');
+        putchar('o');
+        putchar('n');
+        putchar('e');
+        putchar('\n');
+        return;
+    }
+    struct Relation_record *curr = record_root;
+    struct Entity_name *entity;
+    while (curr != NULL) {
 
-        if (record_root == NULL) {
-            //record vuoto, stampa none
-            putc('n', fp2);
-            putc('o', fp2);
-            putc('n', fp2);
-            putc('e', fp2);
-            putc('\n', fp2);
-            return;
+        int i = 0;
+        //stampa il nome della relazione
+        putchar('"');
+        while (curr->relation_name[i] != '\0') {
+            putchar(curr->relation_name[i]);
+            i++;
         }
-        struct Relation_record *curr = record_root;
-        struct Entity_name *entity;
-        while (curr != NULL) {
-            if (curr->relations > 0) {
-                int i = 0;
-                //stampa il nome della relazione
-                putc('"', fp2);
-                while (curr->relation_name[i] != '\0') {
-                    putc(curr->relation_name[i], fp2);
-                    i++;
-                }
-                putc('"', fp2);
+        putchar('"');
 
-                //stampa il nome di tutte le entità
-                entity = curr->most_popular;
-                while (entity != NULL) {
-                    i = 0;
-                    putc(' ', fp2);
-                    putc('"', fp2);
-                    while (entity->name[i] != '\0') {
-                        putc(entity->name[i], fp2);
-                        i++;
-                    }
-                    putc('"', fp2);
-                    entity = entity->next;
-                }
-                //stampa il numero di relazioni
-                fprintf(fp2, " %i", curr->relations);
-            }
-            putc(';', fp2);
-            putc(' ', fp2);
-            curr = curr->next;
-        }
-        //fine report
-        putc('\n', fp2);
-
-    } else {
-
-        if (record_root == NULL) {
-            //record vuoto, stampa none
-            putchar('n');
-            putchar('o');
-            putchar('n');
-            putchar('e');
-            putchar('\n');
-            return;
-        }
-        struct Relation_record *curr = record_root;
-        struct Entity_name *entity;
-        while (curr != NULL) {
-
-            int i = 0;
-            //stampa il nome della relazione
+        //stampa il nome di tutte le entità
+        entity = curr->most_popular;
+        do {
+            i = 0;
+            putchar(' ');
             putchar('"');
-            while (curr->relation_name[i] != '\0') {
-                putchar(curr->relation_name[i]);
+            while (entity->name[i] != '\0') {
+                putchar(entity->name[i]);
                 i++;
             }
             putchar('"');
-
-            //stampa il nome di tutte le entità
-            entity = curr->most_popular;
-            do {
-                i = 0;
-                putchar(' ');
-                putchar('"');
-                while (entity->name[i] != '\0') {
-                    putchar(entity->name[i]);
-                    i++;
-                }
-                putchar('"');
-                entity = entity->next;
-            }
-            while (entity != NULL);
-            //stampa il numero di relazioni
-            printf(" %i", curr->relations);
-
-            putchar(';');
-            putchar(' ');
-            curr = curr->next;
+            entity = entity->next;
         }
-        //fine report
-        putchar('\n');
+        while (entity != NULL);
+        //stampa il numero di relazioni
+        printf(" %i", curr->relations);
+
+        putchar(';');
+        putchar(' ');
+        curr = curr->next;
     }
+    //fine report
+    putchar('\n');
+
 }
 
 // Fine del cinema
@@ -1273,304 +1224,147 @@ int main() {
     char relation[RELATION_NAME_LENGTH];
     char ch, command[COMMAND_NAME_LENGTH];
 
-    DEBUG = 0;
 
-    if (DEBUG) {
+    while (1) {
 
-        if (!(fp1 = fopen("in.txt", "r"))) {
-            puts("Errore fp1");
-            return -1;
+        // Scorre il file di input fino al primo comando
+        do {
+            ch = getchar();
+        } while (ch == ' ' || ch == '\n' || ch == '\0');
+        // A questo punto ho trovato il primo carattere, inizio a scrivere il comando nel vettore
+        int i = 0;
+        do {
+            command[i] = ch;
+            i++;
         }
-        if (!(fp2 = fopen("out.txt", "w"))) {
-            puts("Errore fp2");
-            return -1;
-        }
+        while ((ch = getchar()) != '"' && ch != '\n' && ch != ' ');
+        //fine del nome del comando
+        command[i] = '\0';
 
-        while (1) {
-
-            // Scorre il file di input fino al primo comando
-            do {
-                ch = getc(fp1);
-            } while (ch == ' ' || ch == '\n' || ch == '\0');
-            // A questo punto ho trovato il primo carattere, inizio a scrivere il comando nel vettore
-            int i = 0;
-            do {
-                command[i] = ch;
-                i++;
-            }
-            while ((ch = getc(fp1)) != '"' && ch != '\n' && ch != ' ');
-            //fine del nome del comando
-            command[i] = '\0';
-
-            // A questo punto il comando è salvato nel buffer
-            if (strcmp(command, "addent") == 0) {
-                //carica il nome dell'entità
-                do {
-                    ch = getc(fp1);
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getc(fp1)) != '"') {
-                    entity1[i] = ch;
-                    i++;
-                }
-                //fine del nome dell'entità
-                entity1[i] = '\0';
-                addent(entity1);
-            }
-
-            else if (strcmp(command, "delent") == 0) {
-                //carica il nome dell'entità
-                do {
-                    ch = getc(fp1);
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getc(fp1)) != '"') {
-                    entity1[i] = ch;
-                    i++;
-                }
-                //fine del nome dell'entità
-                entity1[i] = '\0';
-                delent(entity1);
-            }
-            else if (strcmp(command, "addrel") == 0) {
-                //carica il nome della prima entità
-                do {
-                    ch = getc(fp1);
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getc(fp1)) != '"') {
-                    entity1[i] = ch;
-                    i++;
-                }
-                //fine del nome della prima entità
-                entity1[i] = '\0';
-
-                //carica il nome della seconda entità
-                do {
-                    ch = getc(fp1);
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getc(fp1)) != '"') {
-                    entity2[i] = ch;
-                    i++;
-                }
-                //fine del nome della seconda entità
-                entity2[i] = '\0';
-
-                //carica il nome della relazione
-                do {
-                    ch = getc(fp1);
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getc(fp1)) != '"') {
-                    relation[i] = ch;
-                    i++;
-                }
-                //fine del nome della relazione
-                relation[i] = '\0';
-
-                addrel(entity1, entity2, relation);
-            }
-            else if (strcmp(command, "delrel") == 0) {
-                //carica il nome della prima entità
-                do {
-                    ch = getc(fp1);
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getc(fp1)) != '"') {
-                    entity1[i] = ch;
-                    i++;
-                }
-                //fine del nome della prima entità
-                entity1[i] = '\0';
-
-                //carica il nome della seconda entità
-                do {
-                    ch = getc(fp1);
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getc(fp1)) != '"') {
-                    entity2[i] = ch;
-                    i++;
-                }
-                //fine del nome della seconda entità
-                entity2[i] = '\0';
-
-                //carica il nome della relazione
-                do {
-                    ch = getc(fp1);
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getc(fp1)) != '"') {
-                    relation[i] = ch;
-                    i++;
-                }
-                //fine del nome della relazione
-                relation[i] = '\0';
-                delrel(entity1, entity2, relation);
-            }
-            else if (strcmp(command, "report") == 0) {
-                report();
-            }
-            else {
-                record_destroy();
-                break;
-            }
-        }
-
-        fclose(fp1);
-        fclose(fp2);
-
-    } else {
-        while (1) {
-
-            // Scorre il file di input fino al primo comando
+        // A questo punto il comando è salvato nel buffer
+        if (strcmp(command, "addent") == 0) {
+            //carica il nome dell'entità
             do {
                 ch = getchar();
-            } while (ch == ' ' || ch == '\n' || ch == '\0');
-            // A questo punto ho trovato il primo carattere, inizio a scrivere il comando nel vettore
-            int i = 0;
-            do {
-                command[i] = ch;
+            } while (ch != '"');
+            //inizio del nome
+            i = 0;
+            while ((ch = getchar()) != '"') {
+                entity1[i] = ch;
                 i++;
             }
-            while ((ch = getchar()) != '"' && ch != '\n' && ch != ' ');
-            //fine del nome del comando
-            command[i] = '\0';
-
-            // A questo punto il comando è salvato nel buffer
-            if (strcmp(command, "addent") == 0) {
-                //carica il nome dell'entità
-                do {
-                    ch = getchar();
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getchar()) != '"') {
-                    entity1[i] = ch;
-                    i++;
-                }
-                //fine del nome dell'entità
-                entity1[i] = '\0';
-                addent(entity1);
-            }
-
-            else if (strcmp(command, "delent") == 0) {
-                //carica il nome dell'entità
-                do {
-                    ch = getchar();
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getchar()) != '"') {
-                    entity1[i] = ch;
-                    i++;
-                }
-                //fine del nome dell'entità
-                entity1[i] = '\0';
-                delent(entity1);
-            }
-            else if (strcmp(command, "addrel") == 0) {
-                //carica il nome della prima entità
-                do {
-                    ch = getchar();
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getchar()) != '"') {
-                    entity1[i] = ch;
-                    i++;
-                }
-                //fine del nome della prima entità
-                entity1[i] = '\0';
-
-                //carica il nome della seconda entità
-                do {
-                    ch = getchar();
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getchar()) != '"') {
-                    entity2[i] = ch;
-                    i++;
-                }
-                //fine del nome della seconda entità
-                entity2[i] = '\0';
-
-                //carica il nome della relazione
-                do {
-                    ch = getchar();
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getchar()) != '"') {
-                    relation[i] = ch;
-                    i++;
-                }
-                //fine del nome della relazione
-                relation[i] = '\0';
-
-                addrel(entity1, entity2, relation);
-            }
-            else if (strcmp(command, "delrel") == 0) {
-                //carica il nome della prima entità
-                do {
-                    ch = getchar();
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getchar()) != '"') {
-                    entity1[i] = ch;
-                    i++;
-                }
-                //fine del nome della prima entità
-                entity1[i] = '\0';
-
-                //carica il nome della seconda entità
-                do {
-                    ch = getchar();
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getchar()) != '"') {
-                    entity2[i] = ch;
-                    i++;
-                }
-                //fine del nome della seconda entità
-                entity2[i] = '\0';
-
-                //carica il nome della relazione
-                do {
-                    ch = getchar();
-                } while (ch != '"');
-                //inizio del nome
-                i = 0;
-                while ((ch = getchar()) != '"') {
-                    relation[i] = ch;
-                    i++;
-                }
-                //fine del nome della relazione
-                relation[i] = '\0';
-                delrel(entity1, entity2, relation);
-            }
-            else if (strcmp(command, "report") == 0) {
-                //report();
-            }
-            else {
-                inorder_complete_tree_walk(entities_root);
-                end();
-                break;
-            }
-
+            //fine del nome dell'entità
+            entity1[i] = '\0';
+            addent(entity1);
         }
+
+        else if (strcmp(command, "delent") == 0) {
+            //carica il nome dell'entità
+            do {
+                ch = getchar();
+            } while (ch != '"');
+            //inizio del nome
+            i = 0;
+            while ((ch = getchar()) != '"') {
+                entity1[i] = ch;
+                i++;
+            }
+            //fine del nome dell'entità
+            entity1[i] = '\0';
+            delent(entity1);
+        }
+        else if (strcmp(command, "addrel") == 0) {
+            //carica il nome della prima entità
+            do {
+                ch = getchar();
+            } while (ch != '"');
+            //inizio del nome
+            i = 0;
+            while ((ch = getchar()) != '"') {
+                entity1[i] = ch;
+                i++;
+            }
+            //fine del nome della prima entità
+            entity1[i] = '\0';
+
+            //carica il nome della seconda entità
+            do {
+                ch = getchar();
+            } while (ch != '"');
+            //inizio del nome
+            i = 0;
+            while ((ch = getchar()) != '"') {
+                entity2[i] = ch;
+                i++;
+            }
+            //fine del nome della seconda entità
+            entity2[i] = '\0';
+
+            //carica il nome della relazione
+            do {
+                ch = getchar();
+            } while (ch != '"');
+            //inizio del nome
+            i = 0;
+            while ((ch = getchar()) != '"') {
+                relation[i] = ch;
+                i++;
+            }
+            //fine del nome della relazione
+            relation[i] = '\0';
+
+            addrel(entity1, entity2, relation);
+        }
+        else if (strcmp(command, "delrel") == 0) {
+            //carica il nome della prima entità
+            do {
+                ch = getchar();
+            } while (ch != '"');
+            //inizio del nome
+            i = 0;
+            while ((ch = getchar()) != '"') {
+                entity1[i] = ch;
+                i++;
+            }
+            //fine del nome della prima entità
+            entity1[i] = '\0';
+
+            //carica il nome della seconda entità
+            do {
+                ch = getchar();
+            } while (ch != '"');
+            //inizio del nome
+            i = 0;
+            while ((ch = getchar()) != '"') {
+                entity2[i] = ch;
+                i++;
+            }
+            //fine del nome della seconda entità
+            entity2[i] = '\0';
+
+            //carica il nome della relazione
+            do {
+                ch = getchar();
+            } while (ch != '"');
+            //inizio del nome
+            i = 0;
+            while ((ch = getchar()) != '"') {
+                relation[i] = ch;
+                i++;
+            }
+            //fine del nome della relazione
+            relation[i] = '\0';
+            delrel(entity1, entity2, relation);
+        }
+        else if (strcmp(command, "report") == 0) {
+            report();
+        }
+        else {
+            end();
+            break;
+        }
+
     }
     return 0;
-}
+    }
+
