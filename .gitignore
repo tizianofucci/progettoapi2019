@@ -17,5 +17,7 @@ main
 # File batch
 *.in
 
-# File generati da Linux
+# File di WSL
 *.out
+*.sh
+cmake-build-release-wsl/

@@ -469,9 +469,9 @@ void entity_destroy(struct Entity_node *x) {
             //dealloca l'intero albero
             relation_tree_destroy(curr->relations_root);
             //dealloca la radice
-            /*if (curr->relations_root != T_NIL_RELATION) {
+            if (curr->relations_root != T_NIL_RELATION) {
                 free(curr->relations_root);
-            }*/
+            }
             free(curr->relation_name);
             free(curr);
             curr = next;
@@ -790,46 +790,6 @@ void record_counter_increase(struct Relation_record *record, char *name, unsigne
     record->relations = number;
 }
 
-// Rimuove le relazioni entranti da parte di una certa entità.
-void search_relation_by_name(struct Relation_node *x) {
-
-    if (x != T_NIL_RELATION) {
-        search_relation_by_name(x->left);
-        search_relation_by_name(x->right);
-        if (strcmp(x->sender, eliminating_entity_name) == 0) {
-            relation_delete(CURRENT_ROOT, x);
-            relation_instance_destroy(x);
-            FOUND = 1;
-        }
-    }
-}
-
-// Cancellazione di tutte le relazioni uscenti da un'entità
-void outgoing_relations_delete(struct Entity_node *root) {
-
-    struct Entity_node *curr = root;
-
-    if (curr != T_NIL_ENTITY) {
-        //visita tutte le entità
-        outgoing_relations_delete(curr->left);
-
-        //scorre i tipi di relazione nell'entità
-        struct Relation_type *rel = curr->key->relations;
-        while (rel != NULL) {
-
-            CURRENT_ROOT = &curr->key->relations->relations_root;
-            FOUND = 0;
-            //elimina l'istanza di relazione con l'entità da eliminare
-            search_relation_by_name(rel->relations_root);
-            //c'era un'istanza e bisogna decrementare il contatore
-            if (FOUND == 1)
-                rel->number--;
-            rel = rel->next_relation;
-        }
-        outgoing_relations_delete(curr->right);
-    }
-}
-
 struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH]) {
 
     struct Relation_record *curr, *prev = NULL;
@@ -1108,20 +1068,14 @@ void addent(char *name) {
 // elimina tutte le relazioni di cui "id_ent" fa parte (sia come origine, che come destinazione)
 void delent(char *name) {
 
-    FOUND = 0;
-    eliminating_entity_name = name;
-    struct Entity_node *found;
-    found = entity_search(name);
-    if (found != T_NIL_ENTITY) {
-        outgoing_relations_delete(entities_root);
-        entity_node_delete(found);
-        entity_destroy(found);
-    } else
-        return;
-    FOUND = 0;
+    struct Entity_node *entity = entity_search(name);
 
-    record_destroy();
-    record_create();
+    if (entity == T_NIL_ENTITY)
+        //non esiste
+        return;
+
+    entity_node_delete(entity);
+    entity_destroy(entity);
 }
 
 // Aggiunge una relazione – identificata da "id_rel" – tra le entità "id_orig" e "id_dest", in cui "id_dest" è il
