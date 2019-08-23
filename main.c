@@ -106,6 +106,7 @@ bool DEBUG;
 
 /* FUNZIONI PER LA GESTIONE DEGLI ALBERI */
 
+// Stampa tutte le entità monitorate
 void inorder_entity_tree_walk(struct Entity_node *root) {
 
     if (root != T_NIL_ENTITY) {
@@ -114,6 +115,35 @@ void inorder_entity_tree_walk(struct Entity_node *root) {
         inorder_entity_tree_walk(root->right);
     }
 }
+
+// Stampa in ordine tutte le relazioni di un certo tipo
+void inorder_relation_tree_walk(struct Relation_node *root) {
+    if (root != T_NIL_RELATION) {
+        inorder_relation_tree_walk(root->left);
+        printf(" %s, ", root->sender);
+        inorder_relation_tree_walk(root->right);
+    }
+}
+
+// Stampa le entità con almeno una relazione
+void inorder_complete_tree_walk(struct Entity_node *root) {
+    if (root == T_NIL_ENTITY)
+        return;
+    inorder_complete_tree_walk(root->left);
+    if(root->key->relations != NULL) {
+        printf("%s", root->key->name);
+        struct Relation_type *rel = root->key->relations;
+        while (rel != NULL) {
+            printf(" {%s}: ", rel->relation_name);
+            inorder_relation_tree_walk(rel->relations_root);
+            putchar('\n');
+            rel = rel->next_relation;
+        }
+    }
+    inorder_complete_tree_walk(root->right);
+}
+
+
 
 // Cerca un'entità nell'albero
 struct Entity_node *entity_search(char *name) {
@@ -157,52 +187,6 @@ struct Relation_node *relation_search(struct Relation_node *root, char *name) {
 
     // non trovata
     return T_NIL_RELATION;
-}
-
-struct Relation_type *search_relation_type(struct Entity *entity, char name[RELATION_NAME_LENGTH]) {
-    struct Relation_type *curr = entity->relations;
-    //TODO: Ottimizzare
-    while (curr != NULL && strcmp(curr->relation_name, name) != 0) {
-        curr = curr->next_relation;
-    }
-    return curr;
-}
-
-
-// Funzione di supporto per delete
-struct Entity_node *entity_successor(struct Entity_node *x) {
-
-    if (x->right != T_NIL_ENTITY) {
-        // allora il successore è il minimo del sottoalbero destro
-        while (x->left != T_NIL_ENTITY) x = x->left;
-        return x;
-    }
-    //se non c'è l'albero destro allora risalgo fino a trovare un figlio sinistro
-    struct Entity_node *y;
-    y = x->p;
-    while (y != T_NIL_ENTITY && x == y->right) {
-        x = y;
-        y = x->p;
-    }
-    return y;
-}
-
-// Funzine di supporto per delete
-struct Relation_node *relation_successor(struct Relation_node *x) {
-
-    if (x->right != T_NIL_RELATION) {
-        // allora il successore è il minimo del sottoalbero destro
-        while (x->left != T_NIL_RELATION) x = x->left;
-        return x;
-    }
-    struct Relation_node *curr;
-    //se non c'è l'albero destro allora risalgo fino a trovare un figlio sinistro
-    curr = x->p;
-    while (curr != T_NIL_RELATION && x == curr->right) {
-        x = curr;
-        curr = x->p;
-    }
-    return curr;
 }
 
 // Rotazione a sinistra nell'albero delle entità
@@ -445,7 +429,7 @@ void relation_instance_insert(struct Relation_type *type, char *name) {
     relation_insert_fixup(type, z);
 }
 
-// Distrugge un intero albero di relazioni, ma non la radice
+// Distrugge un intero albero di relazioni
 void relation_tree_destroy(struct Relation_node *root) {
     if (root != T_NIL_RELATION) {
         relation_tree_destroy(root->left);
@@ -468,10 +452,6 @@ void entity_destroy(struct Entity_node *x) {
             next = curr->next_relation;
             //dealloca l'intero albero
             relation_tree_destroy(curr->relations_root);
-            /*//dealloca la radice
-            if (curr->relations_root != T_NIL_RELATION) {
-                free(curr->relations_root);
-            }*/
             free(curr->relation_name);
             free(curr);
             curr = next;
@@ -480,16 +460,6 @@ void entity_destroy(struct Entity_node *x) {
     //dealloca il nodo
     free(x->key);
     free(x);
-}
-
-// Elimina un tipo di relazione, nei parametri va fornito anche il precedente così da avere tempo di esecuzione O(1)
-void relation_destroy(struct Relation_type *relation, struct Relation_type *prev) {
-    //collega la relazione precedente alla successiva di quella da eliminare
-    prev->next_relation = relation->next_relation;
-    relation_tree_destroy(relation->relations_root);
-    free(relation->relations_root);
-    free(relation->relation_name);
-    free(relation);
 }
 
 // Funzione di supporto alla cancellazione
@@ -798,56 +768,53 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
         record_root->relations = 0;
         record_root->next = NULL;
         return record_root;
-    } else if (curr->next == NULL) {
-        //esiste solo una relazione
-        if (strcmp(curr->relation_name, rel_name) == 0) {
-            //trovata, esisteva già
-            return curr;
-        } else if (strcmp(curr->relation_name, rel_name) < 0) {
-            //inserisce dopo
-            curr->next = malloc(sizeof(struct Relation_node));
-            strcpy(curr->next->relation_name, rel_name);
-            curr->next->relations = 0;
-            curr->next->most_popular = NULL;
-            curr->next->next = NULL;
-            return curr->next;
-        } else {
-            //inserisce prima
-            record_root = malloc(sizeof(struct Relation_record));
-            record_root->next = curr;
-            record_root->most_popular = NULL;
-            record_root->relations = 0;
-            strcpy(record_root->relation_name, rel_name);
-            return record_root;
-        }
+    }
+    if (strcmp(curr->relation_name, rel_name) == 0) {
+        //esiste in prima posizione
+        return curr;
+    }
+    if (strcmp(curr->relation_name, rel_name) > 0) {
+        //inserimento in testa
+        record_root = malloc(sizeof(struct Relation_record));
+        record_root->next = curr;
+        record_root->most_popular = NULL;
+        record_root->relations = 0;
+        strcpy(record_root->relation_name, rel_name);
+        return record_root;
+    }
+    if (curr->next == NULL) {
+        //se c'è solo una relazione e non si deve inserire prima, inserisce dopo
+        curr->next = malloc(sizeof(struct Relation_node));
+        strcpy(curr->next->relation_name, rel_name);
+        curr->next->relations = 0;
+        curr->next->most_popular = NULL;
+        curr->next->next = NULL;
+        return curr->next;
+
     } else {
-        //scorre la lista
-        while (curr->next != NULL && strcmp(curr->relation_name, rel_name) < 0) {
+        while (curr->next != NULL) {
+            if (strcmp(curr->relation_name, rel_name) == 0)
+                //trovata
+                return curr;
+            if (strcmp(curr->relation_name, rel_name) > 0) {
+                //inserisce prima
+                prev->next = malloc(sizeof(struct Relation_node));
+                strcpy(prev->next->relation_name, rel_name);
+                prev->next->relations = 0;
+                prev->next->most_popular = NULL;
+                prev->next->next = curr;
+                return curr->next;
+            }
             prev = curr;
             curr = curr->next;
         }
-        if (strcmp(curr->relation_name, rel_name) == 0) {
-            //trovata, esisteva già
-            return curr;
-        }
-        else if (strcmp(curr->relation_name, rel_name) > 0) {
-            //inserisce prima
-            prev->next = malloc(sizeof(struct Relation_record));
-            strcpy(prev->next->relation_name, rel_name);
-            prev->next->most_popular = NULL;
-            prev->next->relations = 0;
-            prev->next->next = curr;
-            return prev->next;
-        }
-        else {
-            //inserisce dopo
-            curr->next = malloc(sizeof(struct Relation_node));
-            strcpy(curr->next->relation_name, rel_name);
-            curr->next->relations = 0;
-            curr->next->most_popular = NULL;
-            curr->next->next = NULL;
-            return curr->next;
-        }
+        //sono arrivato in fondo
+        curr->next = malloc(sizeof(struct Relation_node));
+        strcpy(curr->next->relation_name, rel_name);
+        curr->next->relations = 0;
+        curr->next->most_popular = NULL;
+        curr->next->next = NULL;
+        return curr->next;
     }
 }
 
@@ -942,21 +909,16 @@ struct Relation_record *relation_record_search(char *rel_name) {
 
     struct Relation_record *curr = record_root;
 
-    if (curr->next == NULL) {
-        //una sola relazione nel record
-        if (strcmp(rel_name, curr->relation_name) == 0)
-            return curr;
-        else return NULL;
-    } else {
-        if (strcmp(rel_name, curr->relation_name) == 0)
-                return curr;
-        else do {
-            curr = curr->next;
-            if (strcmp(rel_name, curr->relation_name) == 0)
-                return curr;
-        } while (curr->next != NULL && strcmp(curr->relation_name, rel_name) < 0);
+    if (curr == NULL)
+        //record vuoto
         return NULL;
+
+    while (curr != NULL) {
+        if (strcmp(curr->relation_name, rel_name) == 0)
+            return curr;
+        curr = curr->next;
     }
+    return NULL;
 }
 
 // In seguito a una delent distrugge il record e lo ricrea
@@ -1044,28 +1006,29 @@ void record_create() {
 }
 
 // Funzione ricorsiva che elimina tutte le istanze di relazione con l'entità eliminating_entity_name
-void clean_relations(struct Entity_node *root) {
+void clean_relations(struct Entity_node *e_root) {
 
-    if (root == T_NIL_ENTITY)
+    if (e_root == T_NIL_ENTITY)
         return;
 
-    clean_relations(root->left);
+    clean_relations(e_root->left);
 
     //corpo della funzione
-    struct Relation_type *type = root->key->relations;
+    struct Relation_type *type = e_root->key->relations;
     struct Relation_node *found;
     //scorre tutte le relazioni
-    while (type != NULL) {
+    while (type != NULL && type->number > 0) {
         found = relation_search(type->relations_root, eliminating_entity_name);
         if (found != T_NIL_RELATION) {
             relation_delete(type->relations_root, found);
             free(found->sender);
             free(found);
+            type->number --;
         }
         type = type->next_relation;
     }
 
-    clean_relations(root->right);
+    clean_relations(e_root->right);
 }
 
 /* FUNZIONI */
@@ -1141,57 +1104,44 @@ void addrel(char *orig, char *dest, char *rel_name) {
 // (laddove "id_dest" è il ricevente della relazione);
 // se non c'è relazione "id_rel" tra "id_orig" e "id_dest" (con "id_dest" come ricevente), non fa nulla
 void delrel(char *orig, char *dest, char *rel_name) {
+
     struct Entity_node *destination;
-
-    //verifica se le entità sono monitorate
-    destination = entity_search(orig);
-    if (destination == T_NIL_ENTITY)
+    if (entity_search(orig) == T_NIL_ENTITY)
         return;
-    destination = entity_search(orig);
+    destination = entity_search(dest);
     if (destination == T_NIL_ENTITY)
         return;
 
-    //verifica se la relazione è monitorata
-    struct Relation_record *rel = record_root;
-    //TODO: Ottimizzare
-    while (rel != NULL && strcmp(rel_name, rel->relation_name) != 0) {
-        rel = rel->next;
-    }
-    if (rel == NULL)
-        //relazione non presente
+    struct Relation_record *found;
+
+    found = relation_record_search(rel_name);
+    if (found == NULL)
         return;
 
-    //ricerca se l'istanza di relazione esiste nell'entità
-    struct Relation_node *relation;
-    struct Relation_type *curr_rel_type = destination->key->relations;
-    // cerca se esiste quel tipo di relazione
-    //TODO: Ottimizzare
-    while (curr_rel_type != NULL && strcmp(curr_rel_type->relation_name, rel_name) != 0)
-        curr_rel_type = curr_rel_type->next_relation;
-    // se non trovato
-    if (curr_rel_type == NULL)
+    struct Relation_type *type;
+
+    type = destination->key->relations;
+
+    //cerca il tipo di relazione nell'entità destinazione
+    while (type != NULL && strcmp(type->relation_name, rel_name) != 0)
+        type = type->next_relation;
+
+    if (type == NULL)
         return;
 
-    // se quel tipo di relazione esiste, cerca la specifica istanza
-    relation = curr_rel_type->relations_root;
+    struct Relation_node *node = relation_search(type->relations_root, orig);
+    //cerca se l'istanza esiste
+    if (node == T_NIL_RELATION)
+        return;
+    relation_delete(type->relations_root, node);
+    free(node->sender);
+    free(node);
+    type->number --;
+    if (type->number == 0)
+        type->relations_root = T_NIL_RELATION;
 
-    // ricerca nell'albero
-
-    while (relation != T_NIL_RELATION) {
-        if (strcmp(orig, relation->sender) == 0) {
-            //trovata
-            relation_delete(curr_rel_type->relations_root, relation);
-            free(relation->sender);
-            free(relation);
-            curr_rel_type->number --;
-            //TODO: Ottimizzare
-            record_destroy();
-            record_create();
-        }
-        else if (strcmp(orig, relation->sender) > 0)
-            relation = relation->right;
-        else relation = relation->left;
-    }
+    record_destroy();
+    record_create();
 }
 
 
@@ -1261,32 +1211,32 @@ void report() {
         struct Entity_name *entity;
         while (curr != NULL) {
 
-            if (curr->relations > 0) {
-                int i = 0;
-                //stampa il nome della relazione
+            int i = 0;
+            //stampa il nome della relazione
+            putchar('"');
+            while (curr->relation_name[i] != '\0') {
+                putchar(curr->relation_name[i]);
+                i++;
+            }
+            putchar('"');
+
+            //stampa il nome di tutte le entità
+            entity = curr->most_popular;
+            do {
+                i = 0;
+                putchar(' ');
                 putchar('"');
-                while (curr->relation_name[i] != '\0') {
-                    putchar(curr->relation_name[i]);
+                while (entity->name[i] != '\0') {
+                    putchar(entity->name[i]);
                     i++;
                 }
                 putchar('"');
-
-                //stampa il nome di tutte le entità
-                entity = curr->most_popular;
-                while (entity != NULL) {
-                    i = 0;
-                    putchar(' ');
-                    putchar('"');
-                    while (entity->name[i] != '\0') {
-                        putchar(entity->name[i]);
-                        i++;
-                    }
-                    putchar('"');
-                    entity = entity->next;
-                }
-                //stampa il numero di relazioni
-                printf(" %i", curr->relations);
+                entity = entity->next;
             }
+            while (entity != NULL);
+            //stampa il numero di relazioni
+            printf(" %i", curr->relations);
+
             putchar(';');
             putchar(' ');
             curr = curr->next;
@@ -1298,7 +1248,7 @@ void report() {
 
 // Fine del cinema
 void end() {
-    //record_destroy();
+    record_destroy();
 }
 
 
@@ -1612,10 +1562,11 @@ int main() {
                 delrel(entity1, entity2, relation);
             }
             else if (strcmp(command, "report") == 0) {
-                report();
+                //report();
             }
             else {
-                record_destroy();
+                inorder_complete_tree_walk(entities_root);
+                end();
                 break;
             }
 
