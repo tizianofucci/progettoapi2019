@@ -93,7 +93,7 @@ struct Relation_node T_NIL_RELATION_NODE;
 struct Relation_node *T_NIL_RELATION = &T_NIL_RELATION_NODE;
 
 // Il nome dell'entità che si sta eliminando
-char *eliminating_entity_name;
+char eliminating_entity_name[ENTITY_NAME_LENGTH];
 
 // Se un'istanza di relazione era presente nell'albero dove si è cercato
 bool FOUND;
@@ -138,7 +138,7 @@ struct Entity_node *entity_search(char *name) {
 }
 
 // Cerca un'entità origine dato un albero di relazioni (per addrel)
-struct Relation_node *relation_name_search(struct Relation_node *root, char *name) {
+struct Relation_node *relation_search(struct Relation_node *root, char *name) {
 
     if (root == T_NIL_RELATION)
         // albero vuoto
@@ -468,10 +468,10 @@ void entity_destroy(struct Entity_node *x) {
             next = curr->next_relation;
             //dealloca l'intero albero
             relation_tree_destroy(curr->relations_root);
-            //dealloca la radice
+            /*//dealloca la radice
             if (curr->relations_root != T_NIL_RELATION) {
                 free(curr->relations_root);
-            }
+            }*/
             free(curr->relation_name);
             free(curr);
             curr = next;
@@ -479,12 +479,6 @@ void entity_destroy(struct Entity_node *x) {
     }
     //dealloca il nodo
     free(x->key);
-    free(x);
-}
-
-// Deallocazione di un'istanza di relazione
-void relation_instance_destroy(struct Relation_node *x) {
-    free(x->sender);
     free(x);
 }
 
@@ -1049,6 +1043,31 @@ void record_create() {
     reverse_entity_tree_walk(entities_root);
 }
 
+// Funzione ricorsiva che elimina tutte le istanze di relazione con l'entità eliminating_entity_name
+void clean_relations(struct Entity_node *root) {
+
+    if (root == T_NIL_ENTITY)
+        return;
+
+    clean_relations(root->left);
+
+    //corpo della funzione
+    struct Relation_type *type = root->key->relations;
+    struct Relation_node *found;
+    //scorre tutte le relazioni
+    while (type != NULL) {
+        found = relation_search(type->relations_root, eliminating_entity_name);
+        if (found != T_NIL_RELATION) {
+            relation_delete(type->relations_root, found);
+            free(found->sender);
+            free(found);
+        }
+        type = type->next_relation;
+    }
+
+    clean_relations(root->right);
+}
+
 /* FUNZIONI */
 
 //aggiunge un'entità identificata da "id_ent" all'insieme delle entità monitorate; se l'entità è già monitorata, non fa nulla
@@ -1076,6 +1095,13 @@ void delent(char *name) {
 
     entity_node_delete(entity);
     entity_destroy(entity);
+
+    strcpy(eliminating_entity_name, name);
+
+    clean_relations(entities_root);
+
+    record_destroy();
+    record_create();
 }
 
 // Aggiunge una relazione – identificata da "id_rel" – tra le entità "id_orig" e "id_dest", in cui "id_dest" è il
@@ -1102,7 +1128,7 @@ void addrel(char *orig, char *dest, char *rel_name) {
     relationType = search_root(destination, rel_name);
 
     //inserisce la relazione entrante nell'entità destinazione, se non esiste già
-    if (relation_name_search(relationType->relations_root, orig) == T_NIL_RELATION) {
+    if (relation_search(relationType->relations_root, orig) == T_NIL_RELATION) {
         relation_instance_insert(relationType, orig);
         //incrementa contatore nell'entità
         relationType->number++;
@@ -1155,7 +1181,8 @@ void delrel(char *orig, char *dest, char *rel_name) {
         if (strcmp(orig, relation->sender) == 0) {
             //trovata
             relation_delete(curr_rel_type->relations_root, relation);
-            relation_instance_destroy(relation);
+            free(relation->sender);
+            free(relation);
             curr_rel_type->number --;
             //TODO: Ottimizzare
             record_destroy();
@@ -1271,7 +1298,7 @@ void report() {
 
 // Fine del cinema
 void end() {
-    record_destroy();
+    //record_destroy();
 }
 
 
