@@ -714,6 +714,9 @@ void record_counter_increase(struct Relation_record *record, char *name, unsigne
         record->relations = number;
         return;
     }
+    if (strcmp(record->most_popular->name, name) == 0)
+        //trovato
+        return;
     if (strcmp(record->most_popular->name, name) > 0) {
         //inserimento in testa
         curr = record->most_popular;
@@ -743,6 +746,9 @@ void record_counter_increase(struct Relation_record *record, char *name, unsigne
             prev = curr;
             curr = curr->next;
         }
+        if (strcmp(curr->name, name) == 0)
+            //trovato
+            return;
         if (strcmp(curr->name, name) > 0) {
             //inserisce prima
             prev->next = malloc(sizeof(struct Entity_name));
@@ -906,6 +912,7 @@ struct Relation_type *search_root(struct Entity_node *dest, char *name) {
     }
 }
 
+// Cerca un tipo di relazione tra quelle monitorate
 struct Relation_record *relation_record_search(char *rel_name) {
 
     if (record_root == NULL)
@@ -1065,6 +1072,7 @@ void delent(char *name) {
     strcpy(eliminating_entity_name, name);
 
     clean_relations(entities_root);
+    record_destroy();
 }
 
 // Aggiunge una relazione – identificata da "id_rel" – tra le entità "id_orig" e "id_dest", in cui "id_dest" è il
@@ -1093,12 +1101,16 @@ void addrel(char *orig, char *dest, char *rel_name) {
         //incrementa contatore nell'entità
         relationType->number++;
     }
+    record_destroy();
 }
+
 
 // Elimina la relazione identificata da "id_rel" tra le entità "id_orig" e "id_dest"
 // (laddove "id_dest" è il ricevente della relazione);
 // se non c'è relazione "id_rel" tra "id_orig" e "id_dest" (con "id_dest" come ricevente), non fa nulla
 void delrel(char *orig, char *dest, char *rel_name) {
+
+    record_create();
 
     struct Entity_node *destination;
     if (entity_search(orig) == T_NIL_ENTITY)
@@ -1134,6 +1146,8 @@ void delrel(char *orig, char *dest, char *rel_name) {
     type->number --;
     if (type->number == 0)
         type->relations_root = T_NIL_RELATION;
+
+    record_destroy();
 }
 
 
@@ -1195,7 +1209,6 @@ void report() {
 void end() {
     record_destroy();
 }
-
 
 int main() {
 
