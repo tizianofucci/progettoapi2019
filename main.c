@@ -684,10 +684,6 @@ void relation_delete(struct Relation_node **tree_root, struct Relation_node *z) 
         relation_delete_fixup(tree_root, x);
 }
 
-void counter_decrease(struct Relation_type *relation) {
-    //TODO: Implement this function
-}
-
 void record_counter_increase(struct Relation_record *record, char *name, unsigned number) {
 
     if (number < record->relations)
@@ -1007,7 +1003,6 @@ void reverse_entity_tree_walk(struct Entity_node *root) {
 }
 
 // Ricrea da zero il record
-//TODO: Bug here
 void record_create() {
     //visita tutto l'albero delle entità
     reverse_entity_tree_walk(entities_root);
@@ -1070,9 +1065,6 @@ void delent(char *name) {
     strcpy(eliminating_entity_name, name);
 
     clean_relations(entities_root);
-
-    record_destroy();
-    record_create();
 }
 
 // Aggiunge una relazione – identificata da "id_rel" – tra le entità "id_orig" e "id_dest", in cui "id_dest" è il
@@ -1091,9 +1083,6 @@ void addrel(char *orig, char *dest, char *rel_name) {
     if (destination == T_NIL_ENTITY)
         return;
 
-    //inserisce la relazione nel record delle relazioni monitorate
-    found = add_relation_record(rel_name);
-
     struct Relation_type *relationType;
     //cerca l'albero della specifica relazione
     relationType = search_root(destination, rel_name);
@@ -1103,8 +1092,6 @@ void addrel(char *orig, char *dest, char *rel_name) {
         relation_instance_insert(relationType, orig);
         //incrementa contatore nell'entità
         relationType->number++;
-        //incrementa contatore nel record
-        record_counter_increase(found, dest, relationType->number);
     }
 }
 
@@ -1147,15 +1134,14 @@ void delrel(char *orig, char *dest, char *rel_name) {
     type->number --;
     if (type->number == 0)
         type->relations_root = T_NIL_RELATION;
-
-    record_destroy();
-    record_create();
 }
 
 
 
 // Emette in output l’elenco delle relazioni, riportando per ciascuna le entità con il maggior numero di relazioni entranti
 void report() {
+
+    record_create();
 
     if (record_root == NULL) {
         //record vuoto, stampa none
@@ -1202,7 +1188,7 @@ void report() {
     }
     //fine report
     putchar('\n');
-
+    record_destroy();
 }
 
 // Fine del cinema
@@ -1365,6 +1351,7 @@ int main() {
             delrel(entity1, entity2, relation);
         }
         else if (strcmp(command, "report") == 0) {
+            //TODO: BUG HERE
             report();
         }
         else {
