@@ -639,7 +639,7 @@ void relation_delete_fixup(struct Relation_node **tree_root, struct Relation_nod
 }
 
 // Cancellazione di una relazione dall'albero e deallocazione del nodo
-void relation_delete(struct Relation_node *tree_root, struct Relation_node *z) {
+void relation_delete(struct Relation_node **tree_root, struct Relation_node *z) {
 
     bool y_orig_color;
     struct Relation_node *x, *y;
@@ -648,11 +648,11 @@ void relation_delete(struct Relation_node *tree_root, struct Relation_node *z) {
     y_orig_color = y->color;
     if (z->left == T_NIL_RELATION) {
         x = z->right;
-        relation_transplant(&tree_root, z, z->right);
+        relation_transplant(tree_root, z, z->right);
     }
     else if (z->right == T_NIL_RELATION) {
         x = z->left;
-        relation_transplant(&tree_root, z, z->left);
+        relation_transplant(tree_root, z, z->left);
     }
     else {
         y = z->right;
@@ -663,17 +663,17 @@ void relation_delete(struct Relation_node *tree_root, struct Relation_node *z) {
         if (y->p == z)
             x->p = y;
         else {
-            relation_transplant(&tree_root, y, y->right);
+            relation_transplant(tree_root, y, y->right);
             y->right = z->right;
             y->right->p = y;
         }
-        relation_transplant(&tree_root, z, y);
+        relation_transplant(tree_root, z, y);
         y->left = z->left;
         y->left->p = y;
         y->color = z->color;
     }
     if (y_orig_color == BLACK)
-        relation_delete_fixup(&tree_root, x);
+        relation_delete_fixup(tree_root, x);
 }
 
 void counter_decrease(struct Relation_type *relation) {
@@ -1020,7 +1020,7 @@ void clean_relations(struct Entity_node *e_root) {
     while (type != NULL && type->number > 0) {
         found = relation_search(type->relations_root, eliminating_entity_name);
         if (found != T_NIL_RELATION) {
-            relation_delete(type->relations_root, found);
+            relation_delete(&type->relations_root, found);
             free(found->sender);
             free(found);
             type->number --;
@@ -1133,7 +1133,7 @@ void delrel(char *orig, char *dest, char *rel_name) {
     //cerca se l'istanza esiste
     if (node == T_NIL_RELATION)
         return;
-    relation_delete(type->relations_root, node);
+    relation_delete(&type->relations_root, node);
     free(node->sender);
     free(node);
     type->number --;
