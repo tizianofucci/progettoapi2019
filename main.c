@@ -402,27 +402,35 @@ void relation_insert_fixup(struct Relation_type *type, struct Relation_node *z) 
 // Inserimento di una istanza di relazione nell'albero, con verifica per evitare duplicati
 void relation_instance_insert(struct Relation_type *type, char *name) {
 
-    struct Relation_node *y = T_NIL_RELATION, *x = type->relations_root;
-    struct Relation_node *z = malloc(sizeof(struct Entity_node));
-    z->right = T_NIL_RELATION;
-    z->left = T_NIL_RELATION;
+    struct Relation_node *x, *y, *z;
+
+    //alloca il nodo
+    z = malloc(sizeof(struct Relation_node));
     z->sender = malloc(strlen(name) + 1);
     strcpy(z->sender, name);
+    z->right = T_NIL_RELATION;
+    z->left = T_NIL_RELATION;
     z->p = T_NIL_RELATION;
+    z->color = BLACK;
 
+    y = T_NIL_RELATION;
+    x = type->relations_root;
 
-    while (x != T_NIL_RELATION) {
+    while(x != T_NIL_RELATION) {
         y = x;
         if (strcmp(z->sender, x->sender) < 0)
             x = x->left;
         else x = x->right;
     }
+
     z->p = y;
     if (y == T_NIL_RELATION)
         type->relations_root = z;
-    else if (strcmp(z->sender, y->sender) < 0)
-        y->left = z;
-    else y->right = z;
+    else {
+        if (strcmp(z->sender, y->sender) < 0)
+            y->left = z;
+        else y->right = z;
+    }
     z->left = T_NIL_RELATION;
     z->right = T_NIL_RELATION;
     z->color = RED;
@@ -803,18 +811,18 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
                 prev->next->relations = 0;
                 prev->next->most_popular = NULL;
                 prev->next->next = curr;
-                return curr->next;
+                return prev->next;
             }
             prev = curr;
             curr = curr->next;
         }
         //sono arrivato in fondo
-        curr->next = malloc(sizeof(struct Relation_node));
-        strcpy(curr->next->relation_name, rel_name);
-        curr->next->relations = 0;
-        curr->next->most_popular = NULL;
-        curr->next->next = NULL;
-        return curr->next;
+        prev->next = malloc(sizeof(struct Relation_node));
+        strcpy(prev->next->relation_name, rel_name);
+        prev->next->relations = 0;
+        prev->next->most_popular = NULL;
+        prev->next->next = NULL;
+        return prev->next;
     }
 }
 
@@ -880,7 +888,7 @@ struct Relation_type *search_root(struct Entity_node *dest, char *name) {
         if (strcmp(curr->relation_name, name) == 0) {
             //trovata
             return curr;
-        } else if (strcmp(curr->relation_name, name) < 0) {
+        } else if (strcmp(curr->relation_name, name) > 0) {
             //inserisce prima
             prev->next_relation = malloc(sizeof(struct Relation_type));
             prev->next_relation->next_relation = curr;
@@ -1366,5 +1374,5 @@ int main() {
 
     }
     return 0;
-    }
+}
 
