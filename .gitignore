@@ -11,9 +11,6 @@ main
 # Test privati
 *.txt
 
-# File batch
-*.in
-
 # File di WSL
 *.out
 *.sh
