@@ -764,6 +764,7 @@ void record_counter_increase(struct Relation_record *record, char *name, unsigne
     record->relations = number;
 }
 
+// Inserisce nel record un tipo di relazione da monitorare, se non è già presente
 struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH]) {
 
     struct Relation_record *curr, *prev = NULL;
@@ -1041,6 +1042,46 @@ void clean_relations(struct Entity_node *e_root) {
     clean_relations(e_root->right);
 }
 
+// Cerca un'entità tra le più popolari in una data relazione monitorata
+bool search_popular(struct Relation_record *record, char *name) {
+
+    if(record == NULL)
+        return false;
+    if(strcmp(record->most_popular->name, name) == 0)
+        return true;
+    struct Entity_name *curr = record->most_popular;
+    while(curr != NULL && strcmp(curr->name, name) != 0) {
+        if (strcmp(curr->name, name) == 0)
+            return true;
+        curr = curr->next;
+    }
+    return false;
+}
+
+void remove_from_popular(struct Relation_record *record, char *name) {
+
+    struct Entity_name *curr, *prev;
+    curr = record->most_popular;
+    prev = curr;
+
+    if(strcmp(record->most_popular->name, name) == 0) {
+        //cancella il primo
+        record->most_popular = curr->next;
+        free(curr);
+        return;
+    }
+    while (curr != NULL) {
+
+        if(strcmp(curr->name, name) == 0) {
+            //elimina curr dalla lista
+            prev->next = curr->next;
+            free(curr);
+        }
+        prev = curr;
+        curr = curr->next;
+    }
+}
+
 /* FUNZIONI */
 
 //aggiunge un'entità identificata da "id_ent" all'insieme delle entità monitorate; se l'entità è già monitorata, non fa nulla
@@ -1067,12 +1108,15 @@ void delent(char *name) {
         return;
 
     entity_node_delete(entity);
+    //elimina il nodo e le relazioni destinazione
     entity_destroy(entity);
 
     strcpy(eliminating_entity_name, name);
-
+    //elimina le relazioni origine, visitando tutte le entità
     clean_relations(entities_root);
+
     record_destroy();
+    record_create();
 }
 
 // Aggiunge una relazione – identificata da "id_rel" – tra le entità "id_orig" e "id_dest", in cui "id_dest" è il
@@ -1094,14 +1138,16 @@ void addrel(char *orig, char *dest, char *rel_name) {
     struct Relation_type *relationType;
     //cerca l'albero della specifica relazione
     relationType = search_root(destination, rel_name);
+    //cerca il tipo di relazione nel record
+    found = add_relation_record(rel_name);
 
     //inserisce la relazione entrante nell'entità destinazione, se non esiste già
     if (relation_search(relationType->relations_root, orig) == T_NIL_RELATION) {
         relation_instance_insert(relationType, orig);
         //incrementa contatore nell'entità
         relationType->number++;
+        record_counter_increase(found, dest, relationType->number);
     }
-    record_destroy();
 }
 
 
@@ -1109,8 +1155,6 @@ void addrel(char *orig, char *dest, char *rel_name) {
 // (laddove "id_dest" è il ricevente della relazione);
 // se non c'è relazione "id_rel" tra "id_orig" e "id_dest" (con "id_dest" come ricevente), non fa nulla
 void delrel(char *orig, char *dest, char *rel_name) {
-
-    record_create();
 
     struct Entity_node *destination;
     if (entity_search(orig) == T_NIL_ENTITY)
@@ -1122,7 +1166,7 @@ void delrel(char *orig, char *dest, char *rel_name) {
     struct Relation_record *found;
 
     found = relation_record_search(rel_name);
-    if (found == NULL)
+    if (found == NULL || found->relations == 0 || found->most_popular == NULL)
         return;
 
     struct Relation_type *type;
@@ -1147,7 +1191,18 @@ void delrel(char *orig, char *dest, char *rel_name) {
     if (type->number == 0)
         type->relations_root = T_NIL_RELATION;
 
+    if(search_popular(found, dest) == false)
+        //l'entità non era tra le più popolari
+        return;
+    //se c'era un ex aequo basta togliere il nome dai più popolari
+    if(found->most_popular->next != NULL) {
+        remove_from_popular(found, dest);
+        return;
+    }
+    //bisogna ricostruire da capo il record
+    //TODO: Ricostruire solo la relazione e non tutte (inutile)
     record_destroy();
+    record_create();
 }
 
 
@@ -1155,7 +1210,6 @@ void delrel(char *orig, char *dest, char *rel_name) {
 // Emette in output l’elenco delle relazioni, riportando per ciascuna le entità con il maggior numero di relazioni entranti
 void report() {
 
-    record_create();
 
     if (record_root == NULL) {
         //record vuoto, stampa none
@@ -1202,7 +1256,6 @@ void report() {
     }
     //fine report
     putchar('\n');
-    record_destroy();
 }
 
 // Fine del cinema
@@ -1264,7 +1317,6 @@ int main() {
             entity1[i] = '\0';
             addent(entity1);
         }
-
         else if (strcmp(command, "delent") == 0) {
             //carica il nome dell'entità
             do {
@@ -1365,6 +1417,10 @@ int main() {
         }
         else if (strcmp(command, "report") == 0) {
             //TODO: BUG HERE
+            report();
+        }
+        else if (strcmp(command, "here") == 0) {
+            //solo per debug
             report();
         }
         else {
