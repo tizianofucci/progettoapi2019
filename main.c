@@ -1082,6 +1082,16 @@ void remove_from_popular(struct Relation_record *record, char *name) {
     }
 }
 
+// Distrugge l'albero delle entità
+void entities_tree_destroy(struct Entity_node *root) {
+
+    if(root == T_NIL_ENTITY)
+        return;
+    entities_tree_destroy(root->left);
+    entities_tree_destroy(root->right);
+    entity_destroy(root);
+}
+
 /* FUNZIONI */
 
 //aggiunge un'entità identificata da "id_ent" all'insieme delle entità monitorate; se l'entità è già monitorata, non fa nulla
@@ -1261,6 +1271,7 @@ void report() {
 // Fine del cinema
 void end() {
     record_destroy();
+    entities_tree_destroy(entities_root);
 }
 
 int main() {
