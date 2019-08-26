@@ -1214,7 +1214,6 @@ void delrel(char *orig, char *dest, char *rel_name) {
 // Emette in output l’elenco delle relazioni, riportando per ciascuna le entità con il maggior numero di relazioni entranti
 void report() {
 
-
     if (record_root == NULL) {
         //record vuoto, stampa none
         putchar('n');
@@ -1289,6 +1288,11 @@ int main() {
     T_NIL_RELATION->left = T_NIL_RELATION;
     T_NIL_RELATION->p = T_NIL_RELATION;
     T_NIL_RELATION->color = BLACK;
+
+    //TODO: togliere
+
+    //freopen("in.txt", "r", stdin);
+    //freopen("output.txt", "w", stdout);
 
     // Buffer per la lettura da stdin
     char entity1[ENTITY_NAME_LENGTH], entity2[ENTITY_NAME_LENGTH];
