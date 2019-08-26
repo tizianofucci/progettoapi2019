@@ -82,15 +82,12 @@ char buffer[BUFFER_SIZE];
 // Radice dell'albero rosso-nero contenente tutte le entità
 struct Entity_node *entities_root;
 
-// Il nodo T_NIL_ENTITY per l'albero delle entità
-struct Entity_node T_NIL_ENTITY_NODE;
-// Il puntatore a T_NIL_ENTITY
-struct Entity_node *T_NIL_ENTITY = &T_NIL_ENTITY_NODE;
 
-// Il nodo T_NIL_ENTITY per l'albero delle relazioni
-struct Relation_node T_NIL_RELATION_NODE;
 // Il puntatore a T_NIL_ENTITY
-struct Relation_node *T_NIL_RELATION = &T_NIL_RELATION_NODE;
+struct Entity_node *T_NIL_ENTITY;
+
+// Il puntatore a T_NIL_RELATION
+struct Relation_node *T_NIL_RELATION;
 
 // Il nome dell'entità che si sta eliminando
 char eliminating_entity_name[ENTITY_NAME_LENGTH];
@@ -357,7 +354,7 @@ void entity_insert(struct Entity_node *z) {
 }
 
 // Funzione di supporto all'inserimento
-void relation_insert_fixup(struct Relation_type *type, struct Relation_node *z) {
+void relation_insert_fixup(struct Relation_node **root, struct Relation_node *z) {
 
     struct Relation_node *y = T_NIL_RELATION;
 
@@ -372,11 +369,11 @@ void relation_insert_fixup(struct Relation_type *type, struct Relation_node *z) 
             } else {
                 if (z == z->p->right) {
                     z = z->p;
-                    relation_left_rotate(&type->relations_root, z);
+                    relation_left_rotate(root, z);
                 }
                 z->p->color = BLACK;
                 z->p->p->color = RED;
-                relation_right_rotate(&type->relations_root, z->p->p);
+                relation_right_rotate(root, z->p->p);
             }
         } else {
             y = z->p->p->left;
@@ -388,19 +385,19 @@ void relation_insert_fixup(struct Relation_type *type, struct Relation_node *z) 
             } else {
                 if (z == z->p->left) {
                     z = z->p;
-                    relation_right_rotate(&type->relations_root, z);
+                    relation_right_rotate(root, z);
                 }
                 z->p->color = BLACK;
                 z->p->p->color = RED;
-                relation_left_rotate(&type->relations_root, z->p->p);
+                relation_left_rotate(root, z->p->p);
             }
         }
     }
-    type->relations_root->color = BLACK;
+    (*root)->color = BLACK;
 }
 
-// Inserimento di una istanza di relazione nell'albero, con verifica per evitare duplicati
-void relation_instance_insert(struct Relation_type *type, char *name) {
+// Inserimento di una istanza di relazione nell'albero
+void relation_instance_insert(struct Relation_node **root, char *name) {
 
     struct Relation_node *x, *y, *z;
 
@@ -408,13 +405,10 @@ void relation_instance_insert(struct Relation_type *type, char *name) {
     z = malloc(sizeof(struct Relation_node));
     z->sender = malloc(strlen(name) + 1);
     strcpy(z->sender, name);
-    z->right = T_NIL_RELATION;
-    z->left = T_NIL_RELATION;
-    z->p = T_NIL_RELATION;
     z->color = BLACK;
 
     y = T_NIL_RELATION;
-    x = type->relations_root;
+    x = *root;
 
     while(x != T_NIL_RELATION) {
         y = x;
@@ -425,7 +419,7 @@ void relation_instance_insert(struct Relation_type *type, char *name) {
 
     z->p = y;
     if (y == T_NIL_RELATION)
-        type->relations_root = z;
+        *root = z;
     else {
         if (strcmp(z->sender, y->sender) < 0)
             y->left = z;
@@ -434,7 +428,7 @@ void relation_instance_insert(struct Relation_type *type, char *name) {
     z->left = T_NIL_RELATION;
     z->right = T_NIL_RELATION;
     z->color = RED;
-    relation_insert_fixup(type, z);
+    relation_insert_fixup(root, z);
 }
 
 // Distrugge un intero albero di relazioni
@@ -771,7 +765,7 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
 
     curr = record_root;
 
-    if (curr == NULL) {
+    if (record_root == NULL) {
         //il record era vuoto
         record_root = malloc(sizeof(struct Relation_record));
         strcpy(record_root->relation_name, rel_name);
@@ -793,14 +787,14 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
         strcpy(record_root->relation_name, rel_name);
         return record_root;
     }
-    if (curr->next == NULL) {
+    if (record_root->next == NULL) {
         //se c'è solo una relazione e non si deve inserire prima, inserisce dopo
-        curr->next = malloc(sizeof(struct Relation_node));
-        strcpy(curr->next->relation_name, rel_name);
-        curr->next->relations = 0;
-        curr->next->most_popular = NULL;
-        curr->next->next = NULL;
-        return curr->next;
+        record_root->next = malloc(sizeof(struct Relation_node));
+        strcpy(record_root->next->relation_name, rel_name);
+        record_root->next->relations = 0;
+        record_root->next->most_popular = NULL;
+        record_root->next->next = NULL;
+        return record_root->next;
 
     } else {
         while (curr != NULL) {
@@ -1153,7 +1147,7 @@ void addrel(char *orig, char *dest, char *rel_name) {
 
     //inserisce la relazione entrante nell'entità destinazione, se non esiste già
     if (relation_search(relationType->relations_root, orig) == T_NIL_RELATION) {
-        relation_instance_insert(relationType, orig);
+        relation_instance_insert(&relationType->relations_root, orig);
         //incrementa contatore nell'entità
         relationType->number++;
         record_counter_increase(found, dest, relationType->number);
@@ -1276,19 +1270,22 @@ void end() {
 
 int main() {
 
+    T_NIL_ENTITY = malloc(sizeof(struct Entity_node));
+    T_NIL_RELATION = malloc(sizeof(struct Relation_node));
+
+    T_NIL_ENTITY->key = NULL;
+    T_NIL_ENTITY->right = T_NIL_ENTITY;
+    T_NIL_ENTITY->left = T_NIL_ENTITY;
+    T_NIL_ENTITY->p = T_NIL_ENTITY;
+    T_NIL_ENTITY->color = BLACK;
     //inizializza albero
     entities_root = T_NIL_ENTITY;
-    T_NIL_ENTITY_NODE.key = NULL;
-    T_NIL_ENTITY_NODE.right = T_NIL_ENTITY;
-    T_NIL_ENTITY_NODE.left = T_NIL_ENTITY;
-    T_NIL_ENTITY_NODE.p = NULL;
-    T_NIL_ENTITY_NODE.color = BLACK;
 
-    T_NIL_RELATION_NODE.p = NULL;
-    T_NIL_RELATION_NODE.right = T_NIL_RELATION;
-    T_NIL_RELATION_NODE.left = T_NIL_RELATION;
-    T_NIL_RELATION_NODE.p = NULL;
-    T_NIL_RELATION_NODE.color = BLACK;
+    T_NIL_RELATION->sender = NULL;
+    T_NIL_RELATION->right = T_NIL_RELATION;
+    T_NIL_RELATION->left = T_NIL_RELATION;
+    T_NIL_RELATION->p = T_NIL_RELATION;
+    T_NIL_RELATION->color = BLACK;
 
     // Buffer per la lettura da stdin
     char entity1[ENTITY_NAME_LENGTH], entity2[ENTITY_NAME_LENGTH];
