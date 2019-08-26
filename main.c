@@ -1264,8 +1264,11 @@ void report() {
 
 // Fine del cinema
 void end() {
+    puts("");
     record_destroy();
     entities_tree_destroy(entities_root);
+    free(T_NIL_RELATION);
+    free(T_NIL_ENTITY);
 }
 
 int main() {
