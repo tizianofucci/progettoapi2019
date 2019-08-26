@@ -1022,7 +1022,7 @@ void clean_relations(struct Entity_node *e_root) {
     struct Relation_type *type = e_root->key->relations;
     struct Relation_node *found;
     //scorre tutte le relazioni
-    while (type != NULL && type->number > 0) {
+    while (type != NULL) {
         found = relation_search(type->relations_root, eliminating_entity_name);
         if (found != T_NIL_RELATION) {
             relation_delete(&type->relations_root, found);
@@ -1044,11 +1044,12 @@ bool search_popular(struct Relation_record *record, char *name) {
     if(strcmp(record->most_popular->name, name) == 0)
         return true;
     struct Entity_name *curr = record->most_popular;
-    while(curr != NULL && strcmp(curr->name, name) != 0) {
-        if (strcmp(curr->name, name) == 0)
-            return true;
+    while(curr != NULL && strcmp(curr->name, name) != 0)
         curr = curr->next;
-    }
+    if(curr == NULL)
+        return false;
+    if (strcmp(curr->name, name) == 0)
+        return true;
     return false;
 }
 
