@@ -789,7 +789,7 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
     }
     if (record_root->next == NULL) {
         //se c'è solo una relazione e non si deve inserire prima, inserisce dopo
-        record_root->next = malloc(sizeof(struct Relation_node));
+        record_root->next = malloc(sizeof(struct Relation_record));
         strcpy(record_root->next->relation_name, rel_name);
         record_root->next->relations = 0;
         record_root->next->most_popular = NULL;
