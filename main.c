@@ -803,7 +803,7 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
                 return curr;
             if (strcmp(curr->relation_name, rel_name) > 0) {
                 //inserisce prima
-                prev->next = malloc(sizeof(struct Relation_node));
+                prev->next = malloc(sizeof(struct Relation_record));
                 strcpy(prev->next->relation_name, rel_name);
                 prev->next->relations = 0;
                 prev->next->most_popular = NULL;
@@ -814,7 +814,7 @@ struct Relation_record *add_relation_record(char rel_name[RELATION_NAME_LENGTH])
             curr = curr->next;
         }
         //sono arrivato in fondo
-        prev->next = malloc(sizeof(struct Relation_node));
+        prev->next = malloc(sizeof(struct Relation_record));
         strcpy(prev->next->relation_name, rel_name);
         prev->next->relations = 0;
         prev->next->most_popular = NULL;
