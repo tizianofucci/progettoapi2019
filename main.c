@@ -1,3 +1,15 @@
+/*
+ *  PROVA FINALE
+ *  ALGORITMI E STRUTTURE DATI
+ *  ANNO ACCADEMICO 2018-2019
+ *  Prof. Matteo Pradella
+ *
+ *
+ *  Tiziano Fucci
+ *  Matr. 873622
+ */
+
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -276,7 +288,7 @@ void entity_insert_fixup(struct Entity_node *z) {
 void entity_insert(struct Entity_node *z) {
 
     struct Entity_node *y = T_NIL_ENTITY,
-                       *x = entities_root;
+            *x = entities_root;
     while (x != T_NIL_ENTITY) {
         y = x;
         if (strcmp(z->key->name, x->key->name) < 0)
@@ -352,7 +364,7 @@ void relation_instance_insert(struct Relation_node **root, char *name) {
     y = T_NIL_RELATION;
     x = *root;
 
-    while(x != T_NIL_RELATION) {
+    while (x != T_NIL_RELATION) {
         y = x;
         if (strcmp(z->sender, x->sender) < 0)
             x = x->left;
@@ -496,12 +508,10 @@ void entity_node_delete(struct Entity_node *z) {
     if (z->left == T_NIL_ENTITY) {
         x = z->right;
         entity_transplant(z, z->right);
-    }
-    else if (z->right == T_NIL_ENTITY) {
+    } else if (z->right == T_NIL_ENTITY) {
         x = z->left;
         entity_transplant(z, z->left);
-    }
-    else {
+    } else {
         y = z->right;
         while (y->left != T_NIL_ENTITY)
             y = y->left;
@@ -593,12 +603,10 @@ void relation_delete(struct Relation_node **tree_root, struct Relation_node *z) 
     if (z->left == T_NIL_RELATION) {
         x = z->right;
         relation_transplant(tree_root, z, z->right);
-    }
-    else if (z->right == T_NIL_RELATION) {
+    } else if (z->right == T_NIL_RELATION) {
         x = z->left;
         relation_transplant(tree_root, z, z->left);
-    }
-    else {
+    } else {
         y = z->right;
         while (y->left != T_NIL_RELATION)
             y = y->left;
@@ -660,8 +668,7 @@ void record_counter_increase(struct Relation_record *record, char *name, unsigne
         record->most_popular = malloc(sizeof(struct Entity_name));
         record->most_popular->next = curr;
         strcpy(record->most_popular->name, name);
-    }
-    else if (record->most_popular->next == NULL) {
+    } else if (record->most_popular->next == NULL) {
 
         //un solo elemento in lista
         if (strcmp(record->most_popular->name, name) > 0) {
@@ -790,15 +797,13 @@ struct Relation_type *search_root(struct Entity_node *dest, char *name) {
         dest->key->relations->next_relation = curr;
         dest->key->relations->number = 0;
         return dest->key->relations;
-    }
-    else if (dest->key->relations->next_relation == NULL) {
+    } else if (dest->key->relations->next_relation == NULL) {
 
         //un solo elemento in lista
         if (strcmp(curr->relation_name, name) == 0) {
             //trovata
             return curr;
-        }
-        else if (strcmp(curr->relation_name, name) > 0) {
+        } else if (strcmp(curr->relation_name, name) > 0) {
             //inserisce prima
             prev = dest->key->relations;
             prev->next_relation = malloc(sizeof(struct Relation_type));
@@ -971,7 +976,7 @@ void clean_relations(struct Entity_node *e_root) {
             relation_delete(&type->relations_root, found);
             free(found->sender);
             free(found);
-            type->number --;
+            type->number--;
         }
         type = type->next_relation;
     }
@@ -981,14 +986,14 @@ void clean_relations(struct Entity_node *e_root) {
 // Cerca un'entità tra le più popolari in una data relazione monitorata
 bool search_popular(struct Relation_record *record, char *name) {
 
-    if(record == NULL)
+    if (record == NULL)
         return false;
-    if(strcmp(record->most_popular->name, name) == 0)
+    if (strcmp(record->most_popular->name, name) == 0)
         return true;
     struct Entity_name *curr = record->most_popular;
-    while(curr != NULL && strcmp(curr->name, name) != 0)
+    while (curr != NULL && strcmp(curr->name, name) != 0)
         curr = curr->next;
-    if(curr == NULL)
+    if (curr == NULL)
         return false;
     if (strcmp(curr->name, name) == 0)
         return true;
@@ -1002,7 +1007,7 @@ void remove_from_popular(struct Relation_record *record, char *name) {
     curr = record->most_popular;
     prev = curr;
 
-    if(strcmp(record->most_popular->name, name) == 0) {
+    if (strcmp(record->most_popular->name, name) == 0) {
         //cancella il primo
         record->most_popular = curr->next;
         free(curr);
@@ -1010,7 +1015,7 @@ void remove_from_popular(struct Relation_record *record, char *name) {
     }
     while (curr != NULL) {
 
-        if(strcmp(curr->name, name) == 0) {
+        if (strcmp(curr->name, name) == 0) {
             //elimina curr dalla lista
             prev->next = curr->next;
             free(curr);
@@ -1023,7 +1028,7 @@ void remove_from_popular(struct Relation_record *record, char *name) {
 // Distrugge l'albero delle entità
 void entities_tree_destroy(struct Entity_node *root) {
 
-    if(root == T_NIL_ENTITY)
+    if (root == T_NIL_ENTITY)
         return;
     entities_tree_destroy(root->left);
     entities_tree_destroy(root->right);
@@ -1136,15 +1141,15 @@ void delrel(char *orig, char *dest, char *rel_name) {
     relation_delete(&type->relations_root, node);
     free(node->sender);
     free(node);
-    type->number --;
+    type->number--;
     if (type->number == 0)
         type->relations_root = T_NIL_RELATION;
 
-    if(search_popular(found, dest) == false)
+    if (search_popular(found, dest) == false)
         //l'entità non era tra le più popolari
         return;
 
-    if(found->most_popular->next != NULL) {
+    if (found->most_popular->next != NULL) {
         //se c'era un ex aequo basta togliere il nome dai più popolari
         remove_from_popular(found, dest);
         return;
@@ -1191,8 +1196,7 @@ void report() {
             }
             putchar('"');
             entity = entity->next;
-        }
-        while (entity != NULL);
+        } while (entity != NULL);
         //stampa il numero di relazioni
         printf(" %i", curr->relations);
 
@@ -1204,9 +1208,8 @@ void report() {
     putchar('\n');
 }
 
-// Fine del cinema
+// Libera tutta la memoria allocata
 void end() {
-    // libera tutta la memoria allocata
     record_destroy();
     entities_tree_destroy(entities_root);
     free(T_NIL_RELATION);
@@ -1250,8 +1253,7 @@ int main() {
         do {
             command[i] = ch;
             i++;
-        }
-        while ((ch = getchar()) != '"' && ch != '\n' && ch != ' ');
+        } while ((ch = getchar()) != '"' && ch != '\n' && ch != ' ');
         //fine del nome del comando
         command[i] = '\0';
 
@@ -1270,8 +1272,7 @@ int main() {
             //fine del nome dell'entità
             entity1[i] = '\0';
             addent(entity1);
-        }
-        else if (strcmp(command, "delent") == 0) {
+        } else if (strcmp(command, "delent") == 0) {
             //carica il nome dell'entità
             do {
                 ch = getchar();
@@ -1285,8 +1286,7 @@ int main() {
             //fine del nome dell'entità
             entity1[i] = '\0';
             delent(entity1);
-        }
-        else if (strcmp(command, "addrel") == 0) {
+        } else if (strcmp(command, "addrel") == 0) {
             //carica il nome della prima entità
             do {
                 ch = getchar();
@@ -1326,8 +1326,7 @@ int main() {
             //fine del nome della relazione
             relation[i] = '\0';
             addrel(entity1, entity2, relation);
-        }
-        else if (strcmp(command, "delrel") == 0) {
+        } else if (strcmp(command, "delrel") == 0) {
             //carica il nome della prima entità
             do {
                 ch = getchar();
@@ -1367,12 +1366,11 @@ int main() {
             //fine del nome della relazione
             relation[i] = '\0';
             delrel(entity1, entity2, relation);
-        }
-        else if (strcmp(command, "report") == 0) {
+        } else if (strcmp(command, "report") == 0) {
             report();
-        }
-        else {
+        } else {
             end();
+            //termina il programma
             break;
         }
 
