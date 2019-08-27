@@ -6,17 +6,12 @@
 
 /* COSTANTI GLOBALI */
 
-// Numero massimo di relazioni stimato
-#define MAX_RELATIONS_NUMBER 25
 // Lunghezza massima stimata del nome di una relazione
 #define RELATION_NAME_LENGTH 50
 // Lunghezza massima stimata del nome di un'entità
 #define ENTITY_NAME_LENGTH 50
 // Lunghezza del buffer per memorizzare il comando
 #define COMMAND_NAME_LENGTH 15
-// Dimensione del buffer di lettura
-#define BUFFER_SIZE 200
-
 
 // Costanti per gli alberi rosso-neri
 #define RED true
@@ -24,7 +19,6 @@
 
 
 /* STRUTTURE */
-
 
 // Un tipo di relazione collegato a un'entità
 struct Relation_type {
@@ -60,7 +54,7 @@ struct Entity_name {
     struct Entity_name *next;
 };
 
-// La rappresentazione di una relazione monitorata, utilizzata per velocizzare la report
+// La rappresentazione di una relazione monitorata, utilizzata per tenere memoria delle relazioni monitorate
 struct Relation_record {
     struct Entity_name *most_popular;
     char relation_name[RELATION_NAME_LENGTH];
@@ -68,20 +62,14 @@ struct Relation_record {
     struct Relation_record *next;
 };
 
-/* VARIABILI GLOBALI */
 
-// Per la gestione di input/output
-FILE *fp1, *fp2;
+/* VARIABILI GLOBALI */
 
 // Radice della lista dei record utilizzati per velocizzare la report
 struct Relation_record *record_root = NULL;
 
-// Buffer per salvare temporaneamente stringhe
-char buffer[BUFFER_SIZE];
-
 // Radice dell'albero rosso-nero contenente tutte le entità
 struct Entity_node *entities_root;
-
 
 // Il puntatore a T_NIL_ENTITY
 struct Entity_node *T_NIL_ENTITY;
@@ -92,55 +80,8 @@ struct Relation_node *T_NIL_RELATION;
 // Il nome dell'entità che si sta eliminando
 char eliminating_entity_name[ENTITY_NAME_LENGTH];
 
-// Se un'istanza di relazione era presente nell'albero dove si è cercato
-bool FOUND;
-
-// Variabile globale per evitare passaggi di parametri inutili in funzione ricorsiva
-struct Relation_node **CURRENT_ROOT;
-
-// Sto facendo debug?
-bool DEBUG;
 
 /* FUNZIONI PER LA GESTIONE DEGLI ALBERI */
-
-// Stampa tutte le entità monitorate
-void inorder_entity_tree_walk(struct Entity_node *root) {
-
-    if (root != T_NIL_ENTITY) {
-        inorder_entity_tree_walk(root->left);
-        puts(root->key->name);
-        inorder_entity_tree_walk(root->right);
-    }
-}
-
-// Stampa in ordine tutte le relazioni di un certo tipo
-void inorder_relation_tree_walk(struct Relation_node *root) {
-    if (root != T_NIL_RELATION) {
-        inorder_relation_tree_walk(root->left);
-        printf(" %s, ", root->sender);
-        inorder_relation_tree_walk(root->right);
-    }
-}
-
-// Stampa le entità con almeno una relazione
-void inorder_complete_tree_walk(struct Entity_node *root) {
-    if (root == T_NIL_ENTITY)
-        return;
-    inorder_complete_tree_walk(root->left);
-    if(root->key->relations != NULL) {
-        printf("%s", root->key->name);
-        struct Relation_type *rel = root->key->relations;
-        while (rel != NULL) {
-            printf(" {%s}: ", rel->relation_name);
-            inorder_relation_tree_walk(rel->relations_root);
-            putchar('\n');
-            rel = rel->next_relation;
-        }
-    }
-    inorder_complete_tree_walk(root->right);
-}
-
-
 
 // Cerca un'entità nell'albero
 struct Entity_node *entity_search(char *name) {
@@ -164,7 +105,7 @@ struct Entity_node *entity_search(char *name) {
     return T_NIL_ENTITY;
 }
 
-// Cerca un'entità origine dato un albero di relazioni (per addrel)
+// Cerca un'entità origine dato un albero di relazioni
 struct Relation_node *relation_search(struct Relation_node *root, char *name) {
 
     if (root == T_NIL_RELATION)
@@ -274,6 +215,7 @@ void relation_right_rotate(struct Relation_node **tree_root, struct Relation_nod
     x->p = y;
 }
 
+// Crea una nuova entità
 struct Entity_node *entity_create(char *name) {
     //l'entità non era già presente, costruisce una nuova entità a partire dal nome
     struct Entity *entity = malloc(sizeof(struct Entity));
@@ -330,7 +272,7 @@ void entity_insert_fixup(struct Entity_node *z) {
     entities_root->color = BLACK;
 }
 
-// Inserimento di un'entità nell'albero, con verifica per evitare duplicati
+// Inserimento di un'entità nell'albero
 void entity_insert(struct Entity_node *z) {
 
     struct Entity_node *y = T_NIL_ENTITY,
@@ -356,7 +298,7 @@ void entity_insert(struct Entity_node *z) {
 // Funzione di supporto all'inserimento
 void relation_insert_fixup(struct Relation_node **root, struct Relation_node *z) {
 
-    struct Relation_node *y = T_NIL_RELATION;
+    struct Relation_node *y;
 
     while (z->p->color == RED) {
         if (z->p == z->p->p->left) {
@@ -678,6 +620,7 @@ void relation_delete(struct Relation_node **tree_root, struct Relation_node *z) 
         relation_delete_fixup(tree_root, x);
 }
 
+// Aggiorna il record delle entità più popolari, se necessario
 void record_counter_increase(struct Relation_record *record, char *name, unsigned number) {
 
     if (number < record->relations)
@@ -927,7 +870,7 @@ struct Relation_record *relation_record_search(char *rel_name) {
     return NULL;
 }
 
-// In seguito a una delent distrugge il record e lo ricrea
+// Distrugge il record e lo ricrea
 void record_destroy() {
     struct Relation_record *curr, *prev;
     struct Entity_name *c, *p;
@@ -1032,7 +975,6 @@ void clean_relations(struct Entity_node *e_root) {
         }
         type = type->next_relation;
     }
-
     clean_relations(e_root->right);
 }
 
@@ -1053,6 +995,7 @@ bool search_popular(struct Relation_record *record, char *name) {
     return false;
 }
 
+// Rimuove un'entità dalle più popolari in una data relazione
 void remove_from_popular(struct Relation_record *record, char *name) {
 
     struct Entity_name *curr, *prev;
@@ -1087,9 +1030,11 @@ void entities_tree_destroy(struct Entity_node *root) {
     entity_destroy(root);
 }
 
-/* FUNZIONI */
 
-//aggiunge un'entità identificata da "id_ent" all'insieme delle entità monitorate; se l'entità è già monitorata, non fa nulla
+/* FUNZIONI FONDAMENTALI */
+
+// Aggiunge un'entità identificata da "id_ent" all'insieme delle entità monitorate;
+// se l'entità è già monitorata, non fa nulla
 void addent(char *name) {
 
     if (entity_search(name) != T_NIL_ENTITY)
@@ -1132,7 +1077,6 @@ void addrel(char *orig, char *dest, char *rel_name) {
     struct Entity_node *destination;
     struct Relation_record *found;
 
-    FOUND = 0;
     if (entity_search(orig) == T_NIL_ENTITY)
         //l'entità non è monitorata
         return;
@@ -1199,18 +1143,16 @@ void delrel(char *orig, char *dest, char *rel_name) {
     if(search_popular(found, dest) == false)
         //l'entità non era tra le più popolari
         return;
-    //se c'era un ex aequo basta togliere il nome dai più popolari
+
     if(found->most_popular->next != NULL) {
+        //se c'era un ex aequo basta togliere il nome dai più popolari
         remove_from_popular(found, dest);
         return;
     }
     //bisogna ricostruire da capo il record
-    //TODO: Ricostruire solo la relazione e non tutte (inutile)
     record_destroy();
     record_create();
 }
-
-
 
 // Emette in output l’elenco delle relazioni, riportando per ciascuna le entità con il maggior numero di relazioni entranti
 void report() {
@@ -1264,7 +1206,7 @@ void report() {
 
 // Fine del cinema
 void end() {
-    puts("");
+    // libera tutta la memoria allocata
     record_destroy();
     entities_tree_destroy(entities_root);
     free(T_NIL_RELATION);
@@ -1290,10 +1232,6 @@ int main() {
     T_NIL_RELATION->p = T_NIL_RELATION;
     T_NIL_RELATION->color = BLACK;
 
-    //TODO: togliere
-
-    //freopen("in.txt", "r", stdin);
-    //freopen("output.txt", "w", stdout);
 
     // Buffer per la lettura da stdin
     char entity1[ENTITY_NAME_LENGTH], entity2[ENTITY_NAME_LENGTH];
@@ -1387,7 +1325,6 @@ int main() {
             }
             //fine del nome della relazione
             relation[i] = '\0';
-
             addrel(entity1, entity2, relation);
         }
         else if (strcmp(command, "delrel") == 0) {
@@ -1432,11 +1369,6 @@ int main() {
             delrel(entity1, entity2, relation);
         }
         else if (strcmp(command, "report") == 0) {
-            //TODO: BUG HERE
-            report();
-        }
-        else if (strcmp(command, "here") == 0) {
-            //solo per debug
             report();
         }
         else {
